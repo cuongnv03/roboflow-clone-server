@@ -16,16 +16,27 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/multer": "^1.4.12",
+    "aws-sdk": "^2.1692.0",
+    "bcryptjs": "^3.0.2",
     "cross-env": "^7.0.3",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "rimraf": "^6.0.1"
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.2",
+    "mysql2": "^3.14.0",
+    "rimraf": "^6.0.1",
+    "sharp": "^0.33.5"
   },
   "devDependencies": {
     "@types/express": "^5.0.1",
     "@types/node": "^22.13.10",
+    "@types/sharp": "^0.31.1",
     "concurrently": "^9.1.2",
     "nodemon": "^3.1.9",
+    "ts-node": "^10.9.2",
     "typescript": "^5.8.2"
   }
 }
