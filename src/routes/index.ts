@@ -4,6 +4,7 @@ import {
   registerUser,
   loginUser,
   logoutUser,
+  getUser,
 } from "../controllers/userController";
 import {
   createWorkspace,
@@ -59,6 +60,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 router.post("/auth/register", registerUser as RequestHandler);
 router.post("/auth/login", loginUser as RequestHandler);
 router.post("/auth/logout", authenticateToken, logoutUser as RequestHandler);
+router.get("/users/me", authenticateToken, getUser as RequestHandler);
 
 // Workspace routes
 router.post(
