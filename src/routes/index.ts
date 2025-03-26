@@ -1,30 +1,64 @@
 import express, { RequestHandler } from "express";
 import { authenticateToken } from "../middleware/auth";
-import { registerUser, loginUser } from "../controllers/userController";
+import {
+  registerUser,
+  loginUser,
+  logoutUser,
+} from "../controllers/userController";
 import {
   createWorkspace,
   getWorkspaces,
+  getWorkspaceById,
+  updateWorkspace,
+  deleteWorkspace,
 } from "../controllers/workspaceController";
-import { createProject, getProjects } from "../controllers/projectController";
-import { addClass, getClasses } from "../controllers/classController";
-import { uploadImage, getImages } from "../controllers/imageController";
+import {
+  createProject,
+  getProjects,
+  getProjectById,
+  updateProject,
+  deleteProject,
+} from "../controllers/projectController";
+import {
+  addClass,
+  getClasses,
+  getClassById,
+  updateClass,
+  deleteClass,
+} from "../controllers/classController";
+import {
+  uploadImage,
+  getImages,
+  uploadVideo,
+} from "../controllers/imageController";
 import {
   addAnnotation,
   getAnnotations,
+  getAnnotationById,
+  updateAnnotation,
+  deleteAnnotation,
 } from "../controllers/annotationController";
 import {
   createDataset,
   getDatasets,
   getDatasetDetails,
+  getDatasetById,
+  updateDataset,
+  deleteDataset,
+  getDatasetImages,
+  addImageToDataset,
+  removeImageFromDataset,
+  generateDataset,
 } from "../controllers/datasetController";
 import multer from "multer";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-// User routes
-router.post("/users/register", registerUser as RequestHandler);
-router.post("/users/login", loginUser as RequestHandler);
+// Authentication routes
+router.post("/auth/register", registerUser as RequestHandler);
+router.post("/auth/login", loginUser as RequestHandler);
+router.post("/auth/logout", authenticateToken, logoutUser as RequestHandler);
 
 // Workspace routes
 router.post(
@@ -33,6 +67,21 @@ router.post(
   createWorkspace as RequestHandler,
 );
 router.get("/workspaces", authenticateToken, getWorkspaces as RequestHandler);
+router.get(
+  "/workspaces/:workspace_id",
+  authenticateToken,
+  getWorkspaceById as RequestHandler,
+);
+router.put(
+  "/workspaces/:workspace_id",
+  authenticateToken,
+  updateWorkspace as RequestHandler,
+);
+router.delete(
+  "/workspaces/:workspace_id",
+  authenticateToken,
+  deleteWorkspace as RequestHandler,
+);
 
 // Project routes
 router.post(
@@ -44,6 +93,21 @@ router.get(
   "/workspaces/:workspace_id/projects",
   authenticateToken,
   getProjects as RequestHandler,
+);
+router.get(
+  "/projects/:project_id",
+  authenticateToken,
+  getProjectById as RequestHandler,
+);
+router.put(
+  "/projects/:project_id",
+  authenticateToken,
+  updateProject as RequestHandler,
+);
+router.delete(
+  "/projects/:project_id",
+  authenticateToken,
+  deleteProject as RequestHandler,
 );
 
 // Class routes
@@ -57,8 +121,23 @@ router.get(
   authenticateToken,
   getClasses as RequestHandler,
 );
+router.get(
+  "/projects/:project_id/classes/:class_id",
+  authenticateToken,
+  getClassById as RequestHandler,
+);
+router.put(
+  "/projects/:project_id/classes/:class_id",
+  authenticateToken,
+  updateClass as RequestHandler,
+);
+router.delete(
+  "/projects/:project_id/classes/:class_id",
+  authenticateToken,
+  deleteClass as RequestHandler,
+);
 
-// Image routes
+// Image and Video routes
 router.post(
   "/projects/:project_id/images",
   authenticateToken,
@@ -70,17 +149,38 @@ router.get(
   authenticateToken,
   getImages as RequestHandler,
 );
+router.post(
+  "/projects/:project_id/videos",
+  authenticateToken,
+  upload.single("file"),
+  uploadVideo as RequestHandler,
+);
 
 // Annotation routes
 router.post(
-  "/projects/:project_id/images/:image_id/annotations",
+  "/images/:image_id/annotations",
   authenticateToken,
   addAnnotation as RequestHandler,
 );
 router.get(
-  "/projects/:project_id/images/:image_id/annotations",
+  "/images/:image_id/annotations",
   authenticateToken,
   getAnnotations as RequestHandler,
+);
+router.get(
+  "/images/:image_id/annotations/:annotation_id",
+  authenticateToken,
+  getAnnotationById as RequestHandler,
+);
+router.put(
+  "/images/:image_id/annotations/:annotation_id",
+  authenticateToken,
+  updateAnnotation as RequestHandler,
+);
+router.delete(
+  "/images/:image_id/annotations/:annotation_id",
+  authenticateToken,
+  deleteAnnotation as RequestHandler,
 );
 
 // Dataset routes
@@ -95,9 +195,39 @@ router.get(
   getDatasets as RequestHandler,
 );
 router.get(
-  "/projects/:project_id/datasets/:dataset_id",
+  "/datasets/:dataset_id",
   authenticateToken,
-  getDatasetDetails as RequestHandler,
+  getDatasetById as RequestHandler,
+);
+router.put(
+  "/datasets/:dataset_id",
+  authenticateToken,
+  updateDataset as RequestHandler,
+);
+router.delete(
+  "/datasets/:dataset_id",
+  authenticateToken,
+  deleteDataset as RequestHandler,
+);
+router.get(
+  "/datasets/:dataset_id/images",
+  authenticateToken,
+  getDatasetImages as RequestHandler,
+);
+router.post(
+  "/datasets/:dataset_id/images",
+  authenticateToken,
+  addImageToDataset as RequestHandler,
+);
+router.delete(
+  "/datasets/:dataset_id/images/:image_id",
+  authenticateToken,
+  removeImageFromDataset as RequestHandler,
+);
+router.post(
+  "/datasets/:dataset_id/generate",
+  authenticateToken,
+  generateDataset as RequestHandler,
 );
 
 export default router;

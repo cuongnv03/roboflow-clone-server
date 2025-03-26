@@ -7,6 +7,10 @@ import { User } from "../types";
 
 dotenv.config();
 
+interface AuthRequest extends Request {
+  user?: { user_id: number; username: string };
+}
+
 export const registerUser = async (
   req: Request,
   res: Response,
@@ -69,9 +73,7 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
     const token = jwt.sign(
       { user_id: user.user_id, username: user.username },
       process.env.JWT_SECRET as string,
-      {
-        expiresIn: "1h",
-      },
+      { expiresIn: "1h" },
     );
 
     res
@@ -81,4 +83,9 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
     console.error(err);
     res.status(500).json({ error: "Server error" });
   }
+};
+
+export const logoutUser = (req: AuthRequest, res: Response) => {
+  // JWT is stateless; logout is typically handled client-side by discarding the token
+  res.status(200).json({ message: "Logged out successfully" });
 };

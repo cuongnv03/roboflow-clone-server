@@ -21,7 +21,7 @@ export interface Project {
   workspace_id: number;
   name: string;
   description?: string;
-  type: "object_detection" | "classification" | "segmentation";
+  type: string;
   created_at: string;
   updated_at: string;
 }
@@ -42,17 +42,17 @@ export interface Image {
   width: number;
   height: number;
   upload_date: string;
-  uploaded_by?: number;
-  status: "uploaded" | "annotated" | "processed";
+  uploaded_by: number;
+  status: string;
 }
 
 export interface Annotation {
   annotation_id: number;
   image_id: number;
   class_id: number;
-  annotation_data: { type: string; coords: number[] };
+  annotation_data: any;
   created_at: string;
-  created_by?: number;
+  created_by: number;
   is_valid: boolean;
 }
 
@@ -61,13 +61,13 @@ export interface Dataset {
   project_id: number;
   name: string;
   created_date: string;
-  preprocessing_settings?: object;
-  augmentation_settings?: object;
-  status: "pending" | "generating" | "completed" | "failed";
+  preprocessing_settings?: any;
+  augmentation_settings?: any;
+  status: string;
 }
 
 export interface DatasetImage {
   dataset_id: number;
   image_id: number;
-  split: "train" | "valid" | "test";
+  split: string;
 }

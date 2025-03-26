@@ -19,11 +19,12 @@ export const uploadImage = async (req: AuthRequest, res: Response) => {
       "SELECT * FROM Projects WHERE project_id = ? AND workspace_id IN (SELECT workspace_id FROM Workspaces WHERE owner_id = ?)",
       [project_id, req.user!.user_id],
     );
-    if ((project as any[]).length === 0)
+    if ((project as any[]).length === 0) {
       return res.status(404).json({ error: "Project not found" });
+    }
 
     const fileName = `${Date.now()}-${file.originalname}`;
-    const key = `projects/${project_id}/${fileName}`;
+    const key = `projects/${project_id}/images/${fileName}`;
 
     // Get image dimensions
     const metadata = await sharp(file.buffer).metadata();
@@ -89,5 +90,44 @@ export const getImages = async (req: AuthRequest, res: Response) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
+  }
+};
+
+export const uploadVideo = async (req: AuthRequest, res: Response) => {
+  const { project_id } = req.params;
+  const file = req.file;
+  if (!file) return res.status(400).json({ error: "No file uploaded" });
+
+  try {
+    const [project] = await pool.query(
+      "SELECT * FROM Projects WHERE project_id = ? AND workspace_id IN (SELECT workspace_id FROM Workspaces WHERE owner_id = ?)",
+      [project_id, req.user!.user_id],
+    );
+    if ((project as any[]).length === 0) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    const fileName = `${Date.now()}-${file.originalname}`;
+    const key = `projects/${project_id}/videos/${fileName}`;
+
+    // Upload to S3
+    const params = {
+      Bucket: process.env.S3_BUCKET!,
+      Key: key,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+      ACL: "private",
+    };
+    const uploadResult = await s3.upload(params).promise();
+
+    const fileUrl = uploadResult.Location;
+
+    // Optionally store video metadata in a Videos table (not implemented here)
+    res
+      .status(201)
+      .json({ message: "Video uploaded successfully", url: fileUrl });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Upload failed" });
   }
 };
