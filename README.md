@@ -4,6 +4,7 @@
 - Copy file `.env.example` into  `.env`
 - Edit all values in file `.env`
 - Run commands
+
 `npm i`
 
 `npm start`
