@@ -3,7 +3,6 @@ import "../config/dotenv";
 import { AppError } from "../middleware/errorHandler";
 
 const JWT_SECRET_ENV = process.env.JWT_SECRET;
-// Default to 1 day in seconds (24 * 60 * 60 = 86400) if env var is missing/invalid
 const JWT_EXPIRES_IN_SECONDS = parseInt(
   process.env.JWT_EXPIRES_IN || "86400",
   10,
@@ -15,8 +14,6 @@ if (!JWT_SECRET_ENV) {
 }
 if (isNaN(JWT_EXPIRES_IN_SECONDS) || JWT_EXPIRES_IN_SECONDS <= 0) {
   console.warn(`Invalid JWT_EXPIRES_IN value, using default of 86400 seconds.`);
-  // Use default if parsing failed or value is non-positive
-  // JWT_EXPIRES_IN_SECONDS = 86400; // Already handled by the || '86400' default in initial assignment
 }
 
 /**
