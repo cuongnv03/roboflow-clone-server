@@ -6,9 +6,6 @@ import {
   updateProject,
   deleteProject,
 } from "../controllers/project.controller";
-import imageRouter from "./image.routes";
-import classRouter from "./class.routes";
-import datasetRouter from "./dataset.routes";
 
 const projectRouter = Router(); // Top-level router for projects
 
@@ -26,20 +23,5 @@ projectRouter.put("/:projectId", updateProject);
 
 // DELETE /api/v1/projects/:projectId - Delete a specific project
 projectRouter.delete("/:projectId", deleteProject);
-
-// --- Mount Nested Routes ---
-// Note: These routers use mergeParams: true internally
-
-// Mount Image Routes (includes nested annotation routes)
-// URL: /api/v1/projects/:projectId/images...
-projectRouter.use("/:projectId/images", imageRouter);
-
-// Mount Class Routes
-// URL: /api/v1/projects/:projectId/classes...
-projectRouter.use("/:projectId/classes", classRouter);
-
-// Mount Dataset Routes
-// URL: /api/v1/projects/:projectId/datasets...
-projectRouter.use("/:projectId/datasets", datasetRouter);
 
 export default projectRouter;
