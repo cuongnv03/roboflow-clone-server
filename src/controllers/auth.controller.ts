@@ -1,26 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcrypt";
-import { pool } from "../config/db";
 import { generateToken } from "../utils/jwtHelper";
 import { AppError } from "../middleware/errorHandler";
-import { RowDataPacket, ResultSetHeader } from "mysql2";
-import { UserDb } from "../types/express/index";
-
-const findUserByEmailOrUsername = async (
-  identifier: string,
-): Promise<UserDb | null> => {
-  const connection = await pool.getConnection();
-  try {
-    const query = "SELECT * FROM Users WHERE email = ? OR username = ? LIMIT 1";
-    const [rows] = await connection.query<UserDb[]>(query, [
-      identifier,
-      identifier,
-    ]);
-    return rows.length > 0 ? rows[0] : null;
-  } finally {
-    connection.release();
-  }
-};
+import { registerUser, findUserByEmailOrUsername } from "../models/auth.model";
 
 export const register = async (
   req: Request,
@@ -29,6 +11,7 @@ export const register = async (
 ): Promise<void> => {
   const { username, email, password } = req.body;
 
+  // Validate request body
   if (!username || !email || !password) {
     return next(
       new AppError("Username, email, and password are required", 400),
@@ -40,41 +23,17 @@ export const register = async (
     );
   }
 
-  const connection = await pool.getConnection();
   try {
-    await connection.beginTransaction();
-
-    const existingUser = await findUserByEmailOrUsername(email);
-    if (existingUser) {
-      if (existingUser.username === username) {
-        await connection.rollback();
-        return next(new AppError("Email or Username already exists", 409));
-      }
-      const existingUsername = await findUserByEmailOrUsername(username);
-      if (existingUsername) {
-        await connection.rollback();
-        return next(new AppError("Username already exists", 409));
-      }
-      await connection.rollback();
-      return next(new AppError("Email already exists", 409));
-    }
-
+    // Hash password (business logic kept here as it precedes DB operation)
     const saltRounds = 10;
     const password_hash = await bcrypt.hash(password, saltRounds);
 
-    const insertQuery =
-      "INSERT INTO Users (username, email, password_hash) VALUES (?, ?, ?)";
-    const [result] = await connection.query<ResultSetHeader>(insertQuery, [
-      username,
-      email,
-      password_hash,
-    ]);
+    // Delegate registration to model
+    const userId = await registerUser(username, email, password_hash);
 
-    const userId = result.insertId;
-    const tokenPayload = { userId: userId, email: email };
+    // Generate token and send response
+    const tokenPayload = { userId, email };
     const token = generateToken(tokenPayload);
-
-    await connection.commit();
 
     res.status(201).json({
       success: true,
@@ -83,11 +42,11 @@ export const register = async (
       user: { userId, username, email },
     });
   } catch (error) {
-    await connection.rollback();
+    if (error instanceof AppError) {
+      return next(error);
+    }
     console.error("Registration Error:", error);
     next(new AppError("Registration failed", 500));
-  } finally {
-    connection.release();
   }
 };
 
@@ -98,27 +57,31 @@ export const login = async (
 ): Promise<void> => {
   const { identifier, password } = req.body;
 
+  // Validate request body
   if (!identifier || !password) {
     return next(new AppError("Email/Username and password are required", 400));
   }
 
   try {
+    // Delegate user lookup to model
     const user = await findUserByEmailOrUsername(identifier);
 
     if (!user) {
       return next(new AppError("Invalid credentials", 401));
     }
 
+    // Verify password
     const isMatch = await bcrypt.compare(password, user.password_hash);
-
     if (!isMatch) {
       return next(new AppError("Invalid credentials", 401));
     }
 
+    // Check if account is active
     if (!user.is_active) {
       return next(new AppError("Account is inactive", 403));
     }
 
+    // Generate token and send response
     const tokenPayload = { userId: user.user_id, email: user.email };
     const token = generateToken(tokenPayload);
 

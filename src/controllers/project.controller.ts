@@ -1,12 +1,15 @@
-import type { Request, Response, NextFunction } from "express";
-import { pool } from "../config/db";
+import { Request, Response, NextFunction } from "express";
 import { AppError } from "../middleware/errorHandler";
+import {
+  handleCreateProject,
+  getProjectsByUserId,
+  getProjectByIdForUser,
+  handleUpdateProject,
+  handleDeleteProject,
+} from "../models/project.model";
+import { allowedProjectTypes } from "../types/projectTypes";
 import type { ProjectDb } from "../types/express/index.d";
-import { ProjectType, allowedProjectTypes } from "../types/projectTypes";
-import type { ResultSetHeader, OkPacket } from "mysql2";
-import { checkProjectAuthorization } from "../utils/authzHelper";
 
-// --- Create Project Controller ---
 export const createProject = async (
   req: Request,
   res: Response,
@@ -15,14 +18,16 @@ export const createProject = async (
   const { name, description, type } = req.body;
   const userId = req.user?.userId;
 
-  // This check already exists and is correct
+  // Validate authentication
   if (!userId) {
     return next(new AppError("Authentication error: User ID not found", 401));
   }
+
+  // Validate request body
   if (!name || !type) {
     return next(new AppError("Project name and type are required", 400));
   }
-  if (!allowedProjectTypes.includes(type as ProjectType)) {
+  if (!allowedProjectTypes.includes(type)) {
     return next(
       new AppError(
         `Invalid project type. Allowed types are: ${allowedProjectTypes.join(
@@ -33,93 +38,86 @@ export const createProject = async (
     );
   }
 
-  const connection = await pool.getConnection();
   try {
-    const insertQuery =
-      "INSERT INTO Projects (user_id, name, description, type) VALUES (?, ?, ?, ?)";
-    const [result] = await connection.query<ResultSetHeader>(insertQuery, [
-      userId, // userId is guaranteed to be a number here because of the check above
+    // Delegate project creation to model
+    const projectId = await handleCreateProject(
+      userId,
       name,
-      description || null,
+      description,
       type,
-    ]);
-    const insertedId = result.insertId;
-    const [rows] = await connection.query<ProjectDb[]>(
-      "SELECT * FROM Projects WHERE project_id = ?",
-      [insertedId],
     );
-    if (rows.length === 0) {
+    const project = await getProjectByIdForUser(projectId, userId);
+    if (!project) {
       throw new AppError("Failed to retrieve created project", 500);
     }
-    res
-      .status(201)
-      .json({
-        success: true,
-        message: "Project created successfully",
-        project: rows[0],
-      });
+
+    // Send response
+    res.status(201).json({
+      success: true,
+      message: "Project created successfully",
+      project,
+    });
   } catch (error) {
-    console.error("Create Project Error:", error);
-    next(new AppError("Failed to create project", 500));
-  } finally {
-    connection.release();
+    next(error);
   }
 };
 
-// --- Get User's Projects Controller ---
 export const getMyProjects = async (
   req: Request,
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
   const userId = req.user?.userId;
-  // This check already exists and is correct
+
+  // Validate authentication
   if (!userId) {
     return next(new AppError("Authentication error: User ID not found", 401));
   }
-  const connection = await pool.getConnection();
+
   try {
-    const query =
-      "SELECT * FROM Projects WHERE user_id = ? ORDER BY created_at DESC";
-    // userId is guaranteed to be a number here
-    const [rows] = await connection.query<ProjectDb[]>(query, [userId]);
-    res.status(200).json({ success: true, count: rows.length, projects: rows });
+    // Delegate project retrieval to model
+    const projects = await getProjectsByUserId(userId);
+
+    // Send response
+    res.status(200).json({ success: true, count: projects.length, projects });
   } catch (error) {
-    console.error("Get My Projects Error:", error);
-    next(new AppError("Failed to retrieve projects", 500));
-  } finally {
-    connection.release();
+    next(error);
   }
 };
 
-// --- Get Project By ID Controller ---
 export const getProjectById = async (
   req: Request,
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
   const { projectId } = req.params;
-  const userId = req.user?.userId; // Type is number | undefined
+  const userId = req.user?.userId;
 
-  // Add the missing check for userId BEFORE using it
+  // Validate authentication
   if (!userId) {
     return next(new AppError("Authentication error: User ID not found", 401));
   }
+
+  // Validate request parameters
   if (!projectId || isNaN(parseInt(projectId, 10))) {
     return next(new AppError("Invalid project ID provided", 400));
   }
 
   const numericProjectId = parseInt(projectId, 10);
   try {
-    // Now userId is guaranteed to be a number here
-    const project = await checkProjectAuthorization(numericProjectId, userId);
-    res.status(200).json({ success: true, project: project });
+    // Delegate project retrieval to model
+    const project = await getProjectByIdForUser(numericProjectId, userId);
+    if (!project) {
+      return next(new AppError("Project not found or not authorized", 404));
+    }
+
+    // Send response
+    res.status(200).json({ success: true, project });
   } catch (error) {
     next(error);
   }
 };
 
-// --- Update Project Controller ---
 export const updateProject = async (
   req: Request,
   res: Response,
@@ -127,12 +125,14 @@ export const updateProject = async (
 ): Promise<void> => {
   const { projectId } = req.params;
   const { name, description } = req.body;
-  const userId = req.user?.userId; // Type is number | undefined
+  const userId = req.user?.userId;
 
-  // Add the missing check for userId BEFORE using it
+  // Validate authentication
   if (!userId) {
     return next(new AppError("Authentication error: User ID not found", 401));
   }
+
+  // Validate request parameters and body
   if (!projectId || isNaN(parseInt(projectId, 10))) {
     return next(new AppError("Invalid project ID provided", 400));
   }
@@ -143,77 +143,61 @@ export const updateProject = async (
   }
 
   const numericProjectId = parseInt(projectId, 10);
-  const connection = await pool.getConnection();
-  try {
-    // Now userId is guaranteed to be a number here
-    await checkProjectAuthorization(numericProjectId, userId);
+  const updates: Partial<ProjectDb> = {};
+  if (name) updates.name = name;
+  if (description !== undefined) updates.description = description;
 
-    const updateFields: { name?: string; description?: string | null } = {};
-    if (name) updateFields.name = name;
-    if (description !== undefined) updateFields.description = description;
-    const updateQuery = "UPDATE Projects SET ? WHERE project_id = ?";
-    const [result] = await connection.query<OkPacket>(updateQuery, [
-      updateFields,
+  try {
+    // Delegate project update to model
+    await handleUpdateProject(numericProjectId, userId, updates);
+    const updatedProject = await getProjectByIdForUser(
       numericProjectId,
-    ]);
-    if (result.affectedRows === 0) {
-      throw new AppError("Failed to update project or project not found", 404); // Use 404
-    }
-    const [updatedRows] = await connection.query<ProjectDb[]>(
-      "SELECT * FROM Projects WHERE project_id = ?",
-      [numericProjectId],
+      userId,
     );
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "Project updated successfully",
-        project: updatedRows[0],
-      });
+    if (!updatedProject) {
+      throw new AppError("Failed to retrieve updated project", 500);
+    }
+
+    // Send response
+    res.status(200).json({
+      success: true,
+      message: "Project updated successfully",
+      project: updatedProject,
+    });
   } catch (error) {
     next(error);
-  } finally {
-    connection.release();
   }
 };
 
-// --- Delete Project Controller ---
 export const deleteProject = async (
   req: Request,
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
   const { projectId } = req.params;
-  const userId = req.user?.userId; // Type is number | undefined
+  const userId = req.user?.userId;
 
-  // Add the missing check for userId BEFORE using it
+  // Validate authentication
   if (!userId) {
     return next(new AppError("Authentication error: User ID not found", 401));
   }
+
+  // Validate request parameters
   if (!projectId || isNaN(parseInt(projectId, 10))) {
     return next(new AppError("Invalid project ID provided", 400));
   }
 
   const numericProjectId = parseInt(projectId, 10);
-  const connection = await pool.getConnection();
   try {
-    // Now userId is guaranteed to be a number here
-    await checkProjectAuthorization(numericProjectId, userId);
+    // Delegate project deletion to model
+    await handleDeleteProject(numericProjectId, userId);
 
-    const deleteQuery = "DELETE FROM Projects WHERE project_id = ?";
-    const [result] = await connection.query<OkPacket>(deleteQuery, [
-      numericProjectId,
-    ]);
-    if (result.affectedRows === 0) {
-      throw new AppError("Failed to delete project or project not found", 404); // Use 404
-    }
-    res
-      .status(200)
-      .json({ success: true, message: "Project deleted successfully" });
+    // Send response
+    res.status(200).json({
+      success: true,
+      message: "Project deleted successfully",
+    });
   } catch (error) {
-    console.error("Delete Project Error:", error);
-    next(new AppError("Failed to delete project", 500));
-  } finally {
-    connection.release();
+    next(error);
   }
 };
