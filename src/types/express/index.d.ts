@@ -1,11 +1,11 @@
-import type { RowDataPacket } from "mysql2"; // Use 'import type'
-import type { File } from "multer"; // Use 'import type'
+import type { RowDataPacket } from "mysql2";
+import type { File } from "multer";
 import type {
   ProjectType as ImportedProjectType,
   SplitType as ImportedSplitType,
   ImageStatus as ImportedImageStatus,
   DatasetStatus as ImportedDatasetStatus,
-} from "../projectTypes"; // Import types if needed from .ts file
+} from "../projectTypes";
 
 // Define the structure of the user object we'll attach to the request
 interface AuthenticatedUser {
