@@ -1,12 +1,22 @@
 import AWS from "aws-sdk";
-import dotenv from "dotenv";
+import "../config/dotenv";
 
-dotenv.config();
+const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
+const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+const region = process.env.AWS_REGION;
+const bucketName = process.env.S3_BUCKET;
 
-const s3 = new AWS.S3({
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  region: process.env.AWS_REGION,
+if (!accessKeyId || !secretAccessKey || !region || !bucketName) {
+  console.error("FATAL ERROR: Missing required AWS S3 environment variables.");
+  throw new Error("Missing required AWS S3 environment variables.");
+}
+
+AWS.config.update({
+  accessKeyId: accessKeyId,
+  secretAccessKey: secretAccessKey,
+  region: region,
 });
 
-export default s3;
+const s3 = new AWS.S3();
+
+export { s3, bucketName };
