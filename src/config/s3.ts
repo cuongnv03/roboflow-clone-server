@@ -1,22 +1,19 @@
 import AWS from "aws-sdk";
-import "../config/dotenv";
+import dotenv from "dotenv";
 
-const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-const region = process.env.AWS_REGION;
-const bucketName = process.env.S3_BUCKET;
+dotenv.config();
 
-if (!accessKeyId || !secretAccessKey || !region || !bucketName) {
-  console.error("FATAL ERROR: Missing required AWS S3 environment variables.");
-  throw new Error("Missing required AWS S3 environment variables.");
-}
-
+// Configure AWS SDK
 AWS.config.update({
-  accessKeyId: accessKeyId,
-  secretAccessKey: secretAccessKey,
-  region: region,
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  region: process.env.AWS_REGION,
 });
 
+// Create S3 service object
 const s3 = new AWS.S3();
+
+// S3 bucket name
+const bucketName = process.env.AWS_S3_BUCKET || "roboflow-clone";
 
 export { s3, bucketName };

@@ -1,33 +1,53 @@
-import express, { Express, Request, Response } from "express";
+import express, { Express, Request, Response, NextFunction } from "express";
 import cors from "cors";
-import { testDbConnection } from "./config/db";
-import "./config/dotenv";
-import mainRouter from "./routes/index";
-import { errorHandler } from "./middleware/errorHandler";
-import multer from "multer";
+import path from "path";
+import dotenv from "dotenv";
 
+// Load environment variables
+dotenv.config();
+
+// Routes
+import userRoutes from "./routes/userRoutes";
+import projectRoutes from "./routes/projectRoutes";
+
+// Error handler
+import errorHandler from "./middleware/errorHandler";
+
+// Database connection
+import { testConnection } from "./config/database";
+
+// App config
+import config from "./config/app";
+
+// Initialize app
 const app: Express = express();
-const PORT = process.env.PORT || 5000;
 
+// Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-testDbConnection();
+// Static files
+app.use(express.static(path.join(__dirname, "public")));
 
-app.use("/api/v1", mainRouter);
+// API routes
+app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/projects", projectRoutes);
 
+// Home route
 app.get("/", (req: Request, res: Response) => {
-  res.send("Welcome to the Roboflow Clone API!");
+  res.send("Roboflow Clone API is running");
 });
 
-app.use((req: Request, res: Response) => {
-  res.status(404).json({ success: false, message: "Resource not found" });
+// Not found handler
+app.all("*", (req: Request, res: Response, next: NextFunction) => {
+  res.status(404).json({
+    status: "error",
+    message: `Can't find ${req.originalUrl} on this server!`,
+  });
 });
 
+// Error handling middleware
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-  console.log(`API available at http://localhost:${PORT}/api/v1`);
-});
+// Start server
