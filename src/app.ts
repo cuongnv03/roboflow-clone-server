@@ -51,3 +51,24 @@ app.all("*", (req: Request, res: Response, next: NextFunction) => {
 app.use(errorHandler);
 
 // Start server
+const PORT = config.port;
+
+const startServer = async () => {
+  try {
+    // Test database connection
+    await testConnection();
+
+    app.listen(PORT, () => {
+      console.log(
+        `Server is running in ${config.nodeEnv} mode on port ${PORT}`,
+      );
+    });
+  } catch (error) {
+    console.error("Unable to start server:", error);
+    process.exit(1);
+  }
+};
+
+startServer();
+
+export default app;

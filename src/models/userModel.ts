@@ -1,4 +1,4 @@
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { pool } from "../config/database";
 import { User, UserInput, JwtPayload } from "../types/user.types";
@@ -71,9 +71,15 @@ export class UserModel {
       email: user.email,
     };
 
-    return jwt.sign(payload, config.jwtSecret, {
-      expiresIn: config.jwtExpiresIn,
-    });
+    if (!process.env.JWT_SECRET) {
+      throw new AppError("JWT_SECRET environment variable is not set", 500);
+    }
+    const secret: jwt.Secret = process.env.JWT_SECRET;
+    const options: jwt.SignOptions = {
+      expiresIn: parseInt(String(process.env.JWT_EXPIRES_IN), 10),
+    };
+
+    return jwt.sign(payload, secret, options);
   }
 
   /**
