@@ -10,28 +10,31 @@ router.use(protect);
 
 // Upload a single image
 router.post(
-  "/:projectId/upload",
+  "/:projectId/images/upload",
   upload.single("image"),
   imageController.uploadImage,
 );
 
 // Upload multiple images
 router.post(
-  "/:projectId/batch-upload",
+  "/:projectId/images/batch-upload",
   upload.array("images", 50), // Allow up to 50 images
   imageController.uploadMultipleImages,
 );
 
 // Get all images for a project
-router.get("/:projectId", imageController.getProjectImages);
+router.get("/:projectId/images/", imageController.getProjectImages);
 
 // Get all batch names for a project
-router.get("/:projectId/batches", imageController.getProjectBatches);
+router.get("/:projectId/images/batches", imageController.getProjectBatches);
 
 // Delete an image
-router.delete("/:imageId", imageController.deleteImage);
+router.delete("/:projectId/images/:imageId", imageController.deleteImage);
 
 // Update image status
-router.patch("/:imageId/status", imageController.updateImageStatus);
+router.patch(
+  "/:projectId/images/:imageId/status",
+  imageController.updateImageStatus,
+);
 
 export default router;

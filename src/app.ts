@@ -30,13 +30,11 @@ app.use(express.urlencoded({ extended: true }));
 
 // Static files
 app.use(express.static(path.join(__dirname, "public")));
-// Serve uploaded files
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // API routes
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/projects", projectRoutes);
-app.use("/api/v1/images", imageRoutes);
+app.use("/api/v1/projects", imageRoutes);
 
 // Home route
 app.get("/", (req: Request, res: Response) => {
