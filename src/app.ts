@@ -9,6 +9,7 @@ dotenv.config();
 // Routes
 import userRoutes from "./routes/userRoutes";
 import projectRoutes from "./routes/projectRoutes";
+import imageRoutes from "./routes/imageRoutes";
 
 // Error handler
 import errorHandler from "./middleware/errorHandler";
@@ -29,10 +30,13 @@ app.use(express.urlencoded({ extended: true }));
 
 // Static files
 app.use(express.static(path.join(__dirname, "public")));
+// Serve uploaded files
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // API routes
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/projects", projectRoutes);
+app.use("/api/v1/images", imageRoutes);
 
 // Home route
 app.get("/", (req: Request, res: Response) => {

@@ -91,3 +91,6 @@ CREATE INDEX idx_images_project_id ON Images(project_id);
 CREATE INDEX idx_annotations_image_id ON Annotations(image_id);
 CREATE INDEX idx_annotations_class_id ON Annotations(class_id);
 CREATE INDEX idx_datasets_project_id ON Datasets(project_id);
+
+-- Add batch_name column to Images table
+ALTER TABLE Images ADD COLUMN batch_name VARCHAR(100) DEFAULT NULL;

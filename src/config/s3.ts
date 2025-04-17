@@ -14,6 +14,6 @@ AWS.config.update({
 const s3 = new AWS.S3();
 
 // S3 bucket name
-const bucketName = process.env.AWS_S3_BUCKET || "roboflow-clone";
+const bucketName = process.env.S3_BUCKET || "roboflow-clone-images";
 
 export { s3, bucketName };
