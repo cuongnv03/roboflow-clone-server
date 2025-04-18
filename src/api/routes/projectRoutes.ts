@@ -16,17 +16,25 @@ import {
 } from "../validators/classValidator";
 import { UserRepository } from "../../domain/repositories/impl/UserRepository";
 import { AuthService } from "../../domain/services/impl/AuthService";
+import { StorageFactory } from "../../infrastructure/storage/StorageFactory";
+import { ImageRepository } from "../../domain/repositories/impl/ImageRepository";
 
 const router = Router();
 
 // Initialize repositories
 const projectRepository = new ProjectRepository();
+const imageRepository = new ImageRepository();
+const storageProvider = StorageFactory.createProvider("local");
 const classRepository = new ClassRepository();
 const userRepository = new UserRepository();
 
 // Initialize services
 const authService = new AuthService(userRepository);
-const projectService = new ProjectService(projectRepository);
+const projectService = new ProjectService(
+  projectRepository,
+  imageRepository,
+  storageProvider,
+);
 const classService = new ClassService(classRepository, projectRepository);
 
 // Initialize controllers

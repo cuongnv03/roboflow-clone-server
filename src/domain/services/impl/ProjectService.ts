@@ -7,9 +7,14 @@ import {
   ProjectStatsDTO,
 } from "../../dtos/project.dto";
 import Project from "../../../database/models/Project";
-
+import { FileStorageProvider } from "../../../infrastructure/storage/providers/LocalStorageProvider";
+import { IImageRepository } from "../../repositories/IImageRepository";
 export class ProjectService implements IProjectService {
-  constructor(private projectRepository: IProjectRepository) {}
+  constructor(
+    private projectRepository: IProjectRepository,
+    private imageRepository: IImageRepository,
+    private storageProvider: FileStorageProvider,
+  ) {}
 
   async createProject(
     userId: number,
@@ -47,7 +52,27 @@ export class ProjectService implements IProjectService {
   async deleteProject(projectId: number, userId: number): Promise<void> {
     // Verify ownership
     await this.projectRepository.verifyOwnership(projectId, userId);
+    const images = await this.imageRepository.findByProjectId(projectId);
     await this.projectRepository.delete(projectId);
+    for (const image of images) {
+      try {
+        await this.storageProvider.deleteFile(image.file_path);
+      } catch (error) {
+        console.error(`Failed to delete file: ${image.file_path}`, error);
+      }
+    }
+
+    try {
+      // Lấy đường dẫn thư mục project
+      const projectDir = this.storageProvider.getProjectDirectory(projectId);
+      // Xóa thư mục project và tất cả nội dung bên trong
+      await this.storageProvider.deleteDirectory(projectDir);
+      console.log(
+        `Successfully deleted project directory for project ${projectId}`,
+      );
+    } catch (error) {
+      console.error(`Error deleting project directory: ${error.message}`);
+    }
   }
 
   async getProjectStats(

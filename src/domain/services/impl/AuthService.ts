@@ -80,7 +80,10 @@ export class AuthService implements IAuthService {
 
   verifyToken(token: string): UserTokenPayload {
     try {
-      return jwt.verify(token, config.jwtSecret) as UserTokenPayload;
+      if (!config.jwtSecret) {
+        throw new Error("JWT secret is not defined");
+      }
+      return jwt.verify(token, config.jwtSecret) as unknown as UserTokenPayload;
     } catch (error) {
       throw new AuthenticationError("Invalid or expired token");
     }

@@ -107,4 +107,42 @@ export class LocalStorageProvider implements IStorageProvider {
       throw new FileUploadError(`Failed to delete file: ${error.message}`);
     }
   }
+
+  /**
+   * Delete a directory and all its contents
+   */
+  async deleteDirectory(dirPath: string): Promise<void> {
+    try {
+      if (!fs.existsSync(dirPath)) {
+        return;
+      }
+
+      const files = fs.readdirSync(dirPath);
+
+      for (const file of files) {
+        const filePath = path.join(dirPath, file);
+        const stat = fs.statSync(filePath);
+
+        if (stat.isDirectory()) {
+          // Đệ quy xóa thư mục con
+          await this.deleteDirectory(filePath);
+        } else {
+          // Xóa file
+          fs.unlinkSync(filePath);
+        }
+      }
+
+      // Xóa thư mục cha (đã rỗng)
+      fs.rmdirSync(dirPath);
+    } catch (error) {
+      throw new Error(`Failed to delete directory: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get project directory path from project ID
+   */
+  getProjectDirectory(projectId: number): string {
+    return path.join(this.baseDir, "projects", projectId.toString());
+  }
 }
