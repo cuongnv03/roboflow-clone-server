@@ -1,14 +1,14 @@
-import { IImageService } from "../interfaces/IImageService";
-import { IImageRepository } from "../interfaces/IImageRepository";
-import { IProjectRepository } from "../interfaces/IProjectRepository";
-import { IStorageProvider } from "../../infrastructure/storage/interfaces/IStorageProvider";
+import { IImageService } from "../IImageService";
+import { IImageRepository } from "../../repositories/IImageRepository";
+import { IProjectRepository } from "../../repositories/IProjectRepository";
+import { IStorageProvider } from "../../../infrastructure/storage/interfaces/IStorageProvider";
 import {
   ImageResponseDTO,
   ImageUploadOptionsDTO,
   BatchUploadResultDTO,
-} from "../dtos/image.dto";
-import { ImageStatus } from "../../database/models/Image";
-import { generateUniqueFilename } from "../../utils/fileUtils";
+} from "../../dtos/image.dto";
+import { ImageStatus } from "../../../database/models/Image";
+import { generateUniqueFilename } from "../../../utils/fileUtils";
 
 export class ImageService implements IImageService {
   constructor(

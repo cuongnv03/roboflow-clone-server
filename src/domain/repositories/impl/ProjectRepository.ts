@@ -1,12 +1,12 @@
-import { IProjectRepository } from "../interfaces/IProjectRepository";
+import { IProjectRepository } from "../IProjectRepository";
 import Project, {
   ProjectCreationAttributes,
-} from "../../database/models/Project";
-import { ProjectStatsDTO } from "../dtos/project.dto";
-import Image from "../../database/models/Image";
-import sequelize from "../../config/database";
-import { NotFoundError } from "../../exceptions/NotFoundError";
-import { ForbiddenError } from "../../exceptions/ForbiddenError";
+} from "../../../database/models/Project";
+import { ProjectStatsDTO } from "../../dtos/project.dto";
+import Image from "../../../database/models/Image";
+import sequelize from "../../../config/database";
+import { NotFoundError } from "../../../exceptions/NotFoundError";
+import { ForbiddenError } from "../../../exceptions/ForbiddenError";
 
 export class ProjectRepository implements IProjectRepository {
   async create(

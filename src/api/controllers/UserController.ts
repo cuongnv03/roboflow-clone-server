@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { IUserService } from "../../domain/interfaces/IUserService";
+import { IUserService } from "../../domain/services/IUserService";
 import { UserUpdateDTO } from "../../domain/dtos/user.dto";
 import { asyncHandler } from "../middlewares/asyncHandler";
 

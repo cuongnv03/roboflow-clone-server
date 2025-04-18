@@ -1,12 +1,12 @@
-import { IClassService } from "../interfaces/IClassService";
-import { IClassRepository } from "../interfaces/IClassRepository";
-import { IProjectRepository } from "../interfaces/IProjectRepository";
+import { IClassService } from "../IClassService";
+import { IClassRepository } from "../../repositories/IClassRepository";
+import { IProjectRepository } from "../../repositories/IProjectRepository";
 import {
   ClassCreateDTO,
   ClassResponseDTO,
   ClassUpdateDTO,
-} from "../dtos/class.dto";
-import Class from "../../database/models/Class";
+} from "../../dtos/class.dto";
+import Class from "../../../database/models/Class";
 
 export class ClassService implements IClassService {
   constructor(

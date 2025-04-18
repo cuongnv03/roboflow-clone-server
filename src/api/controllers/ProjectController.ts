@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { IProjectService } from "../../domain/interfaces/IProjectService";
+import { IProjectService } from "../../domain/services/IProjectService";
 import {
   ProjectCreateDTO,
   ProjectUpdateDTO,

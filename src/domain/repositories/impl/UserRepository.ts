@@ -1,6 +1,6 @@
-import { IUserRepository } from "../interfaces/IUserRepository";
-import User, { UserCreationAttributes } from "../../database/models/User";
-import { NotFoundError } from "../../exceptions/NotFoundError";
+import { IUserRepository } from "../IUserRepository";
+import User, { UserCreationAttributes } from "../../../database/models/User";
+import { NotFoundError } from "../../../exceptions/NotFoundError";
 
 export class UserRepository implements IUserRepository {
   async create(userData: UserCreationAttributes): Promise<User> {

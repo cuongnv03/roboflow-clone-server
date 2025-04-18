@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { IAuthService } from "../../domain/interfaces/IAuthService";
+import { IAuthService } from "../../domain/services/IAuthService";
 import { asyncHandler } from "../middlewares/asyncHandler";
 import { UserRegisterDTO, UserLoginDTO } from "../../domain/dtos/user.dto";
 

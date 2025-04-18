@@ -1,7 +1,7 @@
-import { IUserService } from "../interfaces/IUserService";
-import { IUserRepository } from "../interfaces/IUserRepository";
-import { UserProfileDTO, UserUpdateDTO } from "../dtos/user.dto";
-import { NotFoundError } from "../../exceptions/NotFoundError";
+import { IUserService } from "../IUserService";
+import { IUserRepository } from "../../repositories/IUserRepository";
+import { UserProfileDTO, UserUpdateDTO } from "../../dtos/user.dto";
+import { NotFoundError } from "../../../exceptions/NotFoundError";
 
 export class UserService implements IUserService {
   constructor(private userRepository: IUserRepository) {}

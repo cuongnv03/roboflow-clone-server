@@ -1,6 +1,6 @@
-import { IClassRepository } from "../interfaces/IClassRepository";
-import Class, { ClassCreationAttributes } from "../../database/models/Class";
-import { NotFoundError } from "../../exceptions/NotFoundError";
+import { IClassRepository } from "../IClassRepository";
+import Class, { ClassCreationAttributes } from "../../../database/models/Class";
+import { NotFoundError } from "../../../exceptions/NotFoundError";
 
 export class ClassRepository implements IClassRepository {
   async create(

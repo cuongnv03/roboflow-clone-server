@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { AuthService } from "../../domain/services/AuthService";
+import { AuthService } from "../../domain/services/impl/AuthService";
 import { AuthenticationError } from "../../exceptions/AuthenticationError";
 import { UserTokenPayload } from "../../database/models/User";
 

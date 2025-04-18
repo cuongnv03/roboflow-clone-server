@@ -1,14 +1,14 @@
 import { Router } from "express";
 import { ImageController } from "../controllers/ImageController";
-import { ImageService } from "../../domain/services/ImageService";
-import { ImageRepository } from "../../domain/repositories/ImageRepository";
-import { ProjectRepository } from "../../domain/repositories/ProjectRepository";
+import { ImageService } from "../../domain/services/impl/ImageService";
+import { ImageRepository } from "../../domain/repositories/impl/ImageRepository";
+import { ProjectRepository } from "../../domain/repositories/impl/ProjectRepository";
 import { StorageFactory } from "../../infrastructure/storage/StorageFactory";
 import { authMiddleware } from "../middlewares/auth";
 import { upload } from "../middlewares/upload";
 import { updateImageStatusValidator } from "../validators/imageValidator";
-import { UserRepository } from "../../domain/repositories/UserRepository";
-import { AuthService } from "../../domain/services/AuthService";
+import { UserRepository } from "../../domain/repositories/impl/UserRepository";
+import { AuthService } from "../../domain/services/impl/AuthService";
 
 const router = Router();
 

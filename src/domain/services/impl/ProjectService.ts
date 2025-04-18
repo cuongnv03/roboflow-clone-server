@@ -1,12 +1,12 @@
-import { IProjectService } from "../interfaces/IProjectService";
-import { IProjectRepository } from "../interfaces/IProjectRepository";
+import { IProjectService } from "../IProjectService";
+import { IProjectRepository } from "../../repositories/IProjectRepository";
 import {
   ProjectCreateDTO,
   ProjectResponseDTO,
   ProjectUpdateDTO,
   ProjectStatsDTO,
-} from "../dtos/project.dto";
-import Project from "../../database/models/Project";
+} from "../../dtos/project.dto";
+import Project from "../../../database/models/Project";
 
 export class ProjectService implements IProjectService {
   constructor(private projectRepository: IProjectRepository) {}

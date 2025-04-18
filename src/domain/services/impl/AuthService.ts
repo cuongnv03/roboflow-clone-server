@@ -1,16 +1,16 @@
-import { IAuthService } from "../interfaces/IAuthService";
-import { IUserRepository } from "../interfaces/IUserRepository";
-import User, { UserTokenPayload } from "../../database/models/User";
+import { IAuthService } from "../IAuthService";
+import { IUserRepository } from "../../repositories/IUserRepository";
+import User, { UserTokenPayload } from "../../../database/models/User";
 import {
   UserRegisterDTO,
   UserLoginDTO,
   UserAuthResponseDTO,
   UserProfileDTO,
-} from "../dtos/user.dto";
+} from "../../dtos/user.dto";
 import jwt from "jsonwebtoken";
-import { AuthenticationError } from "../../exceptions/AuthenticationError";
-import { ConflictError } from "../../exceptions/ConflictError";
-import config from "../../config/app";
+import { AuthenticationError } from "../../../exceptions/AuthenticationError";
+import { ConflictError } from "../../../exceptions/ConflictError";
+import config from "../../../config/app";
 
 export class AuthService implements IAuthService {
   constructor(private userRepository: IUserRepository) {}

@@ -1,10 +1,10 @@
-import { IImageRepository } from "../interfaces/IImageRepository";
+import { IImageRepository } from "../IImageRepository";
 import Image, {
   ImageCreationAttributes,
   ImageStatus,
-} from "../../database/models/Image";
-import { NotFoundError } from "../../exceptions/NotFoundError";
-import sequelize from "../../config/database";
+} from "../../../database/models/Image";
+import { NotFoundError } from "../../../exceptions/NotFoundError";
+import sequelize from "../../../config/database";
 
 export class ImageRepository implements IImageRepository {
   async create(

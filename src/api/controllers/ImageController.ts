@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { IImageService } from "../../domain/interfaces/IImageService";
+import { IImageService } from "../../domain/services/IImageService";
 import {
   ImageUploadOptionsDTO,
   ImageStatusUpdateDTO,

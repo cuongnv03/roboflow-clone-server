@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { IClassService } from "../../domain/interfaces/IClassService";
+import { IClassService } from "../../domain/services/IClassService";
 import { ClassCreateDTO, ClassUpdateDTO } from "../../domain/dtos/class.dto";
 import { asyncHandler } from "../middlewares/asyncHandler";
 
