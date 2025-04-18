@@ -1,68 +1,70 @@
-import express, { Express, Request, Response, NextFunction } from "express";
+import express from "express";
 import cors from "cors";
 import path from "path";
 import dotenv from "dotenv";
+import sequelize from "./config/database";
+
+// Import routes
+import authRoutes from "./api/routes/authRoutes";
+import userRoutes from "./api/routes/userRoutes";
+import projectRoutes from "./api/routes/projectRoutes";
+import imageRoutes from "./api/routes/imageRoutes";
+
+// Import middlewares
+import { errorHandler } from "./api/middlewares/errorHandler";
+import { notFoundHandler } from "./api/middlewares/notFoundHandler";
 
 // Load environment variables
 dotenv.config();
 
-// Routes
-import userRoutes from "./routes/userRoutes";
-import projectRoutes from "./routes/projectRoutes";
-import imageRoutes from "./routes/imageRoutes";
-
-// Error handler
-import errorHandler from "./middleware/errorHandler";
-
-// Database connection
-import { testConnection } from "./config/database";
-
-// App config
-import config from "./config/app";
-
 // Initialize app
-const app: Express = express();
+const app = express();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Static files
-app.use(express.static(path.join(__dirname, "public")));
+// Serve static files from the uploads directory
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 // API routes
+app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/projects", projectRoutes);
 app.use("/api/v1/projects", imageRoutes);
 
 // Home route
-app.get("/", (req: Request, res: Response) => {
+app.get("/", (req, res) => {
   res.send("Roboflow Clone API is running");
 });
 
 // Not found handler
-app.all("*", (req: Request, res: Response, next: NextFunction) => {
-  res.status(404).json({
-    status: "error",
-    message: `Can't find ${req.originalUrl} on this server!`,
-  });
-});
+app.use(notFoundHandler);
 
 // Error handling middleware
 app.use(errorHandler);
 
 // Start server
-const PORT = config.port;
+const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
   try {
     // Test database connection
-    await testConnection();
+    await sequelize.authenticate();
+    console.log("Database connection established successfully");
+
+    // Sync models with database (only in development)
+    if (process.env.NODE_ENV === "development") {
+      await sequelize.sync({ alter: true });
+      console.log("Database synced");
+    }
 
     app.listen(PORT, () => {
       console.log(
-        `Server is running in ${config.nodeEnv} mode on port ${PORT}`,
+        `Server is running in ${
+          process.env.NODE_ENV || "development"
+        } mode on port ${PORT}`,
       );
     });
   } catch (error) {
