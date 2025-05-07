@@ -9,6 +9,8 @@ import authRoutes from "./api/routes/authRoutes";
 import userRoutes from "./api/routes/userRoutes";
 import projectRoutes from "./api/routes/projectRoutes";
 import imageRoutes from "./api/routes/imageRoutes";
+import annotationRoutes from "./api/routes/annotationRoutes";
+import datasetRoutes from "./api/routes/datasetRoutes";
 
 // Import middlewares
 import { errorHandler } from "./api/middlewares/errorHandler";
@@ -33,6 +35,8 @@ app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/projects", projectRoutes);
 app.use("/api/v1/projects", imageRoutes);
+app.use("/api/v1/annotations", annotationRoutes);
+app.use("/api/v1/datasets", datasetRoutes);
 
 // Home route
 app.get("/", (req, res) => {
@@ -56,7 +60,7 @@ const startServer = async () => {
 
     // Sync models with database (only in development)
     if (process.env.NODE_ENV === "development") {
-      await sequelize.sync({ alter: true });
+      await sequelize.sync({ force: false });
       console.log("Database synced");
     }
 

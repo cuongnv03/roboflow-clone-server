@@ -7,13 +7,13 @@ import {
   ProjectStatsDTO,
 } from "../../dtos/project.dto";
 import Project from "../../../database/models/Project";
-import { FileStorageProvider } from "../../../infrastructure/storage/providers/LocalStorageProvider";
+import { LocalStorageProvider } from "../../../infrastructure/storage/providers/LocalStorageProvider";
 import { IImageRepository } from "../../repositories/IImageRepository";
 export class ProjectService implements IProjectService {
   constructor(
     private projectRepository: IProjectRepository,
     private imageRepository: IImageRepository,
-    private storageProvider: FileStorageProvider,
+    private storageProvider: LocalStorageProvider,
   ) {}
 
   async createProject(
