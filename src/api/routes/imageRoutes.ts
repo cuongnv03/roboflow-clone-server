@@ -55,6 +55,8 @@ router.get("/:projectId/images", imageController.getProjectImages);
 // Get all batch names for a project
 router.get("/:projectId/images/batches", imageController.getProjectBatches);
 
+router.get("/:projectId/images/:imageId", imageController.getImage);
+
 // Delete an image
 router.delete("/:projectId/images/:imageId", imageController.deleteImage);
 

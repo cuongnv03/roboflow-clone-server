@@ -35,54 +35,78 @@ export class LocalStorageProvider implements IStorageProvider {
       const dirPath = path.join(this.baseDir, directory);
       ensureDirectoryExists(dirPath);
 
-      // Process image with sharp
-      let imageProcessor = sharp(file.buffer);
+      // Check if the file is an image that needs processing
+      const isImage = file.mimetype.startsWith("image/");
 
-      // Get original metadata
-      const metadata = await imageProcessor.metadata();
+      if (isImage) {
+        // Process image with sharp
+        let imageProcessor = sharp(file.buffer);
 
-      // Apply auto-orientation if requested
-      if (options.autoOrient !== false) {
-        imageProcessor = imageProcessor.rotate(); // auto-orient based on EXIF data
+        // Get original metadata
+        const metadata = await imageProcessor.metadata();
+
+        // Apply auto-orientation if requested
+        if (options.autoOrient !== false) {
+          imageProcessor = imageProcessor.rotate(); // auto-orient based on EXIF data
+        }
+
+        // Resize if requested
+        if (options.resize) {
+          imageProcessor = imageProcessor.resize({
+            width: options.resize.width,
+            height: options.resize.height,
+            fit: "inside",
+            withoutEnlargement: true,
+          });
+        }
+
+        // Determine output format
+        let format = options.format || metadata.format || "jpeg";
+        let extension = format;
+
+        // Convert format if requested
+        imageProcessor = imageProcessor.toFormat(format, { quality: 90 });
+
+        // Final filename with extension
+        const finalFilename = `${filename}.${extension}`;
+        const filePath = path.join(dirPath, finalFilename);
+
+        // Write file to disk
+        await imageProcessor.toFile(filePath);
+
+        // Get final dimensions
+        const finalMetadata = await sharp(filePath).metadata();
+
+        // Generate public URL
+        const urlPath = path
+          .join(this.baseUrl, directory, finalFilename)
+          .replace(/\\/g, "/");
+
+        return {
+          url: urlPath,
+          width: finalMetadata.width || 0,
+          height: finalMetadata.height || 0,
+        };
+      } else {
+        // For non-image files (like zip files), simply save without processing
+        const extension = path.extname(file.originalname) || "";
+        const finalFilename = `${filename}${extension}`;
+        const filePath = path.join(dirPath, finalFilename);
+
+        // Write the buffer directly to disk
+        await fs.promises.writeFile(filePath, file.buffer);
+
+        // Generate public URL
+        const urlPath = path
+          .join(this.baseUrl, directory, finalFilename)
+          .replace(/\\/g, "/");
+
+        return {
+          url: urlPath,
+          width: 0, // Not applicable for non-image files
+          height: 0, // Not applicable for non-image files
+        };
       }
-
-      // Resize if requested
-      if (options.resize) {
-        imageProcessor = imageProcessor.resize({
-          width: options.resize.width,
-          height: options.resize.height,
-          fit: "inside",
-          withoutEnlargement: true,
-        });
-      }
-
-      // Determine output format
-      let format = options.format || metadata.format || "jpeg";
-      let extension = format;
-
-      // Convert format if requested
-      imageProcessor = imageProcessor.toFormat(format, { quality: 90 });
-
-      // Final filename with extension
-      const finalFilename = `${filename}.${extension}`;
-      const filePath = path.join(dirPath, finalFilename);
-
-      // Write file to disk
-      await imageProcessor.toFile(filePath);
-
-      // Get final dimensions
-      const finalMetadata = await sharp(filePath).metadata();
-
-      // Generate public URL
-      const urlPath = path
-        .join(this.baseUrl, directory, finalFilename)
-        .replace(/\\/g, "/");
-
-      return {
-        url: urlPath,
-        width: finalMetadata.width || 0,
-        height: finalMetadata.height || 0,
-      };
     } catch (error) {
       console.error("File Upload Error:", error);
       throw new FileUploadError(`Failed to upload file: ${error.message}`);

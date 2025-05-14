@@ -9,6 +9,7 @@ import {
 } from "../../dtos/image.dto";
 import { ImageStatus } from "../../../database/models/Image";
 import { generateUniqueFilename } from "../../../utils/fileUtils";
+import { ForbiddenError } from "../../../exceptions/ForbiddenError";
 
 export class ImageService implements IImageService {
   constructor(
@@ -113,6 +114,28 @@ export class ImageService implements IImageService {
     await this.projectRepository.verifyOwnership(projectId, userId);
 
     return this.imageRepository.getBatchNames(projectId);
+  }
+
+  async getImage(
+    imageId: number,
+    projectId: number,
+    userId: number,
+  ): Promise<ImageResponseDTO> {
+    // Verify project ownership
+    await this.projectRepository.verifyOwnership(projectId, userId);
+
+    // Get the image
+    const image = await this.imageRepository.findById(imageId);
+
+    // Verify the image belongs to the specified project
+    if (image.project_id !== projectId) {
+      throw new ForbiddenError(
+        "This image does not belong to the specified project",
+      );
+    }
+
+    // Map to DTO and return
+    return this.mapToImageResponseDTO(image);
   }
 
   async deleteImage(imageId: number, userId: number): Promise<void> {

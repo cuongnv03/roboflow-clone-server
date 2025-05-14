@@ -56,12 +56,14 @@ const auth = authMiddleware(authService);
 // Apply auth middleware to all routes
 router.use(auth);
 
+router.get("/formats", datasetController.getExportFormats);
+
+router.get("/project/:projectId", datasetController.getProjectDatasets);
+
 // Dataset routes
 router.post("/", createDatasetValidator, datasetController.createDataset);
 
 router.get("/:datasetId", datasetController.getDataset);
-
-router.get("/project/:projectId", datasetController.getProjectDatasets);
 
 router.delete("/:datasetId", datasetController.deleteDataset);
 
@@ -78,8 +80,6 @@ router.post(
 );
 
 router.get("/:datasetId/images", datasetController.getDatasetImages);
-
-router.get("/formats", datasetController.getExportFormats);
 
 router.post(
   "/:datasetId/export",

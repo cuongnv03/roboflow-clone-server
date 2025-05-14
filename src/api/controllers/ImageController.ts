@@ -86,6 +86,23 @@ export class ImageController {
     });
   });
 
+  getImage = asyncHandler(async (req: Request, res: Response) => {
+    const projectId = parseInt(req.params.projectId);
+    const imageId = parseInt(req.params.imageId);
+
+    const image = await this.imageService.getImage(
+      imageId,
+      projectId,
+      req.user.id,
+    );
+
+    res.status(200).json({
+      status: "success",
+      message: "Image retrieved successfully",
+      data: image,
+    });
+  });
+
   deleteImage = asyncHandler(async (req: Request, res: Response) => {
     const imageId = parseInt(req.params.imageId);
     await this.imageService.deleteImage(imageId, req.user.id);

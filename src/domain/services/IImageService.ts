@@ -26,6 +26,11 @@ export interface IImageService {
     batchName?: string,
   ): Promise<ImageResponseDTO[]>;
   getProjectBatches(projectId: number, userId: number): Promise<string[]>;
+  getImage(
+    imageId: number,
+    projectId: number,
+    userId: number,
+  ): Promise<ImageResponseDTO>;
   deleteImage(imageId: number, userId: number): Promise<void>;
   updateImageStatus(
     imageId: number,
