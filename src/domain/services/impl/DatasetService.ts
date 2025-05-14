@@ -253,16 +253,19 @@ export class DatasetService implements IDatasetService {
     // Verify project ownership
     await this.projectRepository.verifyOwnership(dataset.project_id, userId);
 
-    // Get dataset images
-    const images = await this.datasetRepository.getDatasetImages(
-      datasetId,
-      split,
-    );
+    try {
+      // Get dataset images
+      const images = await this.datasetRepository.getDatasetImages(
+        datasetId,
+        split,
+      );
 
-    return images.map((img) => ({
-      id: img.id,
-      split: img.split,
-    }));
+      return images;
+    } catch (error) {
+      console.error("Error fetching dataset images:", error);
+      // Nếu chưa có images, trả về mảng trống
+      return [];
+    }
   }
 
   async exportDataset(

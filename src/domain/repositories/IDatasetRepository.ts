@@ -35,7 +35,7 @@ export interface IDatasetRepository {
   getDatasetImages(
     datasetId: number,
     split?: DatasetSplit,
-  ): Promise<{ id: number; split: DatasetSplit }[]>;
+  ): Promise<Array<{ id: number; split: string }>>;
 
   getImageCounts(datasetId: number): Promise<DatasetImageCount>;
 

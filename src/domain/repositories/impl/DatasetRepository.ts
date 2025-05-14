@@ -65,21 +65,33 @@ export class DatasetRepository implements IDatasetRepository {
   async getDatasetImages(
     datasetId: number,
     split?: DatasetSplit,
-  ): Promise<{ id: number; split: DatasetSplit }[]> {
-    const whereClause: any = { dataset_id: datasetId };
-    if (split) {
-      whereClause.split = split;
+  ): Promise<Array<{ id: number; split: string }>> {
+    try {
+      // Sử dụng model DatasetImage trực tiếp thay vì eager loading
+      const whereClause: any = { dataset_id: datasetId };
+      if (split) {
+        whereClause.split = split;
+      }
+
+      const result = await DatasetImage.findAll({
+        where: whereClause,
+        include: [
+          {
+            model: Image,
+            required: true,
+          },
+        ],
+      });
+
+      // Map kết quả về đúng định dạng
+      return result.map((di) => ({
+        id: di.image_id,
+        split: di.split,
+      }));
+    } catch (error) {
+      console.error("Error fetching dataset images:", error);
+      throw error;
     }
-
-    const datasetImages = await DatasetImage.findAll({
-      where: whereClause,
-      include: [{ model: Image, attributes: ["image_id"] }],
-    });
-
-    return datasetImages.map((di) => ({
-      id: di.image_id,
-      split: di.split,
-    }));
   }
 
   async getImageCounts(datasetId: number): Promise<DatasetImageCount> {

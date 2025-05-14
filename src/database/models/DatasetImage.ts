@@ -51,16 +51,26 @@ DatasetImage.init(
   },
 );
 
-// Setup associations
+// Setup associations - make sure these are properly set up
 Dataset.belongsToMany(Image, {
   through: DatasetImage,
   foreignKey: "dataset_id",
   otherKey: "image_id",
+  as: "images",
 });
+
 Image.belongsToMany(Dataset, {
   through: DatasetImage,
   foreignKey: "image_id",
   otherKey: "dataset_id",
+  as: "datasets",
 });
+
+// Thiết lập quan hệ trực tiếp với DatasetImage
+Dataset.hasMany(DatasetImage, { foreignKey: "dataset_id" });
+DatasetImage.belongsTo(Dataset, { foreignKey: "dataset_id" });
+
+Image.hasMany(DatasetImage, { foreignKey: "image_id" });
+DatasetImage.belongsTo(Image, { foreignKey: "image_id" });
 
 export default DatasetImage;

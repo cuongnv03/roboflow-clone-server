@@ -102,18 +102,27 @@ export class DatasetController {
 
   getDatasetImages = asyncHandler(async (req: Request, res: Response) => {
     const datasetId = parseInt(req.params.datasetId);
-    const split = req.query.split as any;
-    const images = await this.datasetService.getDatasetImages(
-      datasetId,
-      req.user.id,
-      split,
-    );
+    const split = req.query.split as DatasetSplit | undefined;
 
-    res.status(200).json({
-      status: "success",
-      message: "Dataset images retrieved successfully",
-      data: images,
-    });
+    try {
+      const images = await this.datasetService.getDatasetImages(
+        datasetId,
+        req.user.id,
+        split,
+      );
+
+      res.status(200).json({
+        status: "success",
+        message: "Dataset images retrieved successfully",
+        data: images,
+      });
+    } catch (error) {
+      // Trả về error 400 thay vì 500 để frontend có thể hiển thị thông báo
+      res.status(400).json({
+        status: "error",
+        message: error.message || "Failed to retrieve dataset images",
+      });
+    }
   });
 
   getExportFormats = asyncHandler(async (req: Request, res: Response) => {
