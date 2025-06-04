@@ -7,7 +7,6 @@ import AWS from "aws-sdk";
 import sharp from "sharp";
 import { FileUploadError } from "../../../exceptions/FileUploadError";
 import { getErrorMessage } from "../../../utils/errorHandling";
-import { v4 as uuidv4 } from "uuid";
 
 export class S3StorageProvider implements IStorageProvider {
   private s3: AWS.S3;
@@ -96,13 +95,13 @@ export class S3StorageProvider implements IStorageProvider {
         : "";
       const key = `${directory}/${filename}${extension}`;
 
-      // Upload to S3
+      // Upload to S3 WITHOUT ACL (rely on bucket policy instead)
       const uploadParams: AWS.S3.PutObjectRequest = {
         Bucket: this.bucketName,
         Key: key,
         Body: processedBuffer,
         ContentType: contentType,
-        ACL: "public-read", // Make files publicly accessible
+        // Remove ACL line - let bucket policy handle public access
         Metadata: {
           originalName: file.originalname,
           uploadedAt: new Date().toISOString(),
@@ -111,8 +110,11 @@ export class S3StorageProvider implements IStorageProvider {
 
       const uploadResult = await this.s3.upload(uploadParams).promise();
 
+      // Construct public URL manually
+      const publicUrl = `https://${this.bucketName}.s3.${this.region}.amazonaws.com/${key}`;
+
       return {
-        url: uploadResult.Location,
+        url: publicUrl,
         width,
         height,
       };
@@ -219,7 +221,7 @@ export class S3StorageProvider implements IStorageProvider {
   }
 
   /**
-   * Generate presigned URL for temporary access (optional feature)
+   * Generate presigned URL for temporary access
    */
   async generatePresignedUrl(
     key: string,
