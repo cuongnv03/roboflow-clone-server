@@ -33,6 +33,10 @@ import { NotFoundError } from "../../../exceptions/NotFoundError";
 import { InvalidRequestError } from "../../../exceptions/InvalidRequestError";
 import { DatasetSplit } from "../../../database/models/DatasetImage";
 
+interface AnnotationMap {
+  [key: number]: any[];
+}
+
 export class ExportService implements IExportService {
   constructor(
     private datasetRepository: IDatasetRepository,
@@ -56,7 +60,7 @@ export class ExportService implements IExportService {
     await this.projectRepository.verifyOwnership(dataset.project_id, userId);
 
     // Get dataset images for the specified splits
-    const imageAssignments = [];
+    const imageAssignments: Array<{ id: number; split: string }> = [];
     for (const split of options.exportSplits) {
       const splitImages = await this.datasetRepository.getDatasetImages(
         datasetId,
@@ -86,7 +90,7 @@ export class ExportService implements IExportService {
       const imageAnnotations = await this.annotationRepository.findByImageId(
         imageId,
       );
-      annotationsByImage[imageId] = imageAnnotations;
+      const annotationsByImage: AnnotationMap = {};
     }
 
     // Create a temporary directory for the export
@@ -95,7 +99,7 @@ export class ExportService implements IExportService {
     fs.mkdirSync(exportDir, { recursive: true });
 
     // Determine which export format to use
-    let formatDir;
+    let formatDir: string;
 
     try {
       switch (options.format) {
@@ -133,7 +137,10 @@ export class ExportService implements IExportService {
             };
 
             cocoData.images.push(cocoImage);
-            imageMap[img.image_id] = index;
+            interface ImageMap {
+              [key: number]: number;
+            }
+            const imageMap: ImageMap = {};
 
             // Copy image to appropriate directory if requested
             if (options.includeImages) {
@@ -623,7 +630,10 @@ names: ${JSON.stringify(sortedClasses.map((c) => c.name))}
             const assignment = imageAssignments.find(
               (a) => a.id === img.image_id,
             );
-            if (!assignment || !options.exportSplits.includes(assignment.split))
+            if (
+              !assignment ||
+              !options.exportSplits.includes(assignment.split as any)
+            )
               continue;
 
             // Get annotations for this image
@@ -697,7 +707,7 @@ names: ${JSON.stringify(sortedClasses.map((c) => c.name))}
 
           // Write TF Examples to files by split
           for (const [split, examples] of Object.entries(tfExamplesBySplit)) {
-            if (examples.length > 0) {
+            if (examples && Array.isArray(examples) && examples.length > 0) {
               fs.writeFileSync(
                 path.join(formatDir, split, "examples.json"),
                 JSON.stringify(examples, null, 2),

@@ -9,6 +9,7 @@ import {
 import Project from "../../../database/models/Project";
 import { LocalStorageProvider } from "../../../infrastructure/storage/providers/LocalStorageProvider";
 import { IImageRepository } from "../../repositories/IImageRepository";
+import { getErrorMessage } from "../../../utils/errorHandling";
 export class ProjectService implements IProjectService {
   constructor(
     private projectRepository: IProjectRepository,
@@ -71,7 +72,9 @@ export class ProjectService implements IProjectService {
         `Successfully deleted project directory for project ${projectId}`,
       );
     } catch (error) {
-      console.error(`Error deleting project directory: ${error.message}`);
+      console.error(
+        `Error deleting project directory: ${getErrorMessage(error)}`,
+      );
     }
   }
 

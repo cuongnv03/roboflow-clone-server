@@ -10,6 +10,7 @@ import {
 import { ImageStatus } from "../../../database/models/Image";
 import { generateUniqueFilename } from "../../../utils/fileUtils";
 import { ForbiddenError } from "../../../exceptions/ForbiddenError";
+import { getErrorMessage } from "../../../utils/errorHandling";
 
 export class ImageService implements IImageService {
   constructor(
@@ -76,7 +77,7 @@ export class ImageService implements IImageService {
         console.error(`Error uploading file ${file.originalname}:`, error);
         failedUploads.push({
           filename: file.originalname,
-          error: error.message,
+          error: getErrorMessage(error),
         });
       }
     }

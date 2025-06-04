@@ -8,6 +8,7 @@ import path from "path";
 import sharp from "sharp";
 import { FileUploadError } from "../../../exceptions/FileUploadError";
 import { ensureDirectoryExists } from "../../../utils/fileUtils";
+import { getErrorMessage } from "../../../utils/errorHandling";
 
 export class LocalStorageProvider implements IStorageProvider {
   private baseDir: string;
@@ -109,7 +110,9 @@ export class LocalStorageProvider implements IStorageProvider {
       }
     } catch (error) {
       console.error("File Upload Error:", error);
-      throw new FileUploadError(`Failed to upload file: ${error.message}`);
+      throw new FileUploadError(
+        `Failed to upload file: ${getErrorMessage(error)}`,
+      );
     }
   }
 
@@ -128,7 +131,9 @@ export class LocalStorageProvider implements IStorageProvider {
       }
     } catch (error) {
       console.error("File Delete Error:", error);
-      throw new FileUploadError(`Failed to delete file: ${error.message}`);
+      throw new FileUploadError(
+        `Failed to delete file: ${getErrorMessage(error)}`,
+      );
     }
   }
 
@@ -159,7 +164,7 @@ export class LocalStorageProvider implements IStorageProvider {
       // Xóa thư mục cha (đã rỗng)
       fs.rmdirSync(dirPath);
     } catch (error) {
-      throw new Error(`Failed to delete directory: ${error.message}`);
+      throw new Error(`Failed to delete directory: ${getErrorMessage(error)}`);
     }
   }
 

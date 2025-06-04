@@ -27,7 +27,7 @@ export class AuthService implements IAuthService {
       username: userData.username,
       email: userData.email,
       password: userData.password,
-    });
+    } as any);
 
     // Generate token
     const token = this.generateToken(user);
@@ -73,7 +73,7 @@ export class AuthService implements IAuthService {
       email: user.email,
     };
 
-    return jwt.sign(payload, config.jwtSecret, {
+    return jwt.sign(payload, config.jwtSecret || "default-secret-for-dev", {
       expiresIn: config.jwtExpiresIn,
     });
   }

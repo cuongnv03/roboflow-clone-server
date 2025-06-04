@@ -26,7 +26,7 @@ const fileFilter = (
     cb(
       new InvalidRequestError(
         `Unsupported file type: ${file.mimetype}. Supported formats: JPEG, PNG, GIF, BMP, WEBP, AVIF.`,
-      ) as unknown as null,
+      ) as any as null,
     );
   }
 };

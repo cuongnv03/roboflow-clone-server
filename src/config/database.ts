@@ -4,9 +4,9 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const sequelize = new Sequelize(
-  process.env.DB_NAME,
-  process.env.DB_USER,
-  process.env.DB_PASSWORD,
+  process.env.DB_NAME || "roboflow_clone",
+  process.env.DB_USER || "root",
+  process.env.DB_PASSWORD || "Cg0987191375",
   {
     host: process.env.DB_HOST,
     dialect: "mysql",

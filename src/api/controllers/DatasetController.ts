@@ -8,6 +8,8 @@ import {
   DatasetExportOptionsDTO,
 } from "../../domain/dtos/dataset.dto";
 import { asyncHandler } from "../middlewares/asyncHandler";
+import { DatasetSplit } from "../../database/models/DatasetImage";
+import { getErrorMessage } from "../../utils/errorHandling";
 
 export class DatasetController {
   constructor(
@@ -120,7 +122,7 @@ export class DatasetController {
       // Trả về error 400 thay vì 500 để frontend có thể hiển thị thông báo
       res.status(400).json({
         status: "error",
-        message: error.message || "Failed to retrieve dataset images",
+        message: getErrorMessage(error) || "Failed to retrieve dataset images",
       });
     }
   });
