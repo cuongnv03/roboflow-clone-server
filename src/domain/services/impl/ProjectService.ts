@@ -7,14 +7,16 @@ import {
   ProjectStatsDTO,
 } from "../../dtos/project.dto";
 import Project from "../../../database/models/Project";
-import { LocalStorageProvider } from "../../../infrastructure/storage/providers/LocalStorageProvider";
 import { IImageRepository } from "../../repositories/IImageRepository";
 import { getErrorMessage } from "../../../utils/errorHandling";
+import { S3StorageProvider } from "../../../infrastructure/storage/providers/S3StorageProvider";
+import { LocalStorageProvider } from "../../../infrastructure/storage/providers/LocalStorageProvider";
+import { IStorageProvider } from "../../../infrastructure/storage/interfaces/IStorageProvider";
 export class ProjectService implements IProjectService {
   constructor(
     private projectRepository: IProjectRepository,
     private imageRepository: IImageRepository,
-    private storageProvider: LocalStorageProvider,
+    private storageProvider: IStorageProvider,
   ) {}
 
   async createProject(
@@ -63,18 +65,17 @@ export class ProjectService implements IProjectService {
       }
     }
 
-    try {
-      // Lấy đường dẫn thư mục project
-      const projectDir = this.storageProvider.getProjectDirectory(projectId);
-      // Xóa thư mục project và tất cả nội dung bên trong
-      await this.storageProvider.deleteDirectory(projectDir);
-      console.log(
-        `Successfully deleted project directory for project ${projectId}`,
-      );
-    } catch (error) {
-      console.error(
-        `Error deleting project directory: ${getErrorMessage(error)}`,
-      );
+    // If using S3, also delete the entire project directory
+    if (this.storageProvider instanceof S3StorageProvider) {
+      try {
+        const projectDir = this.storageProvider.getProjectDirectory(projectId);
+        await this.storageProvider.deleteDirectory(projectDir);
+        console.log(
+          `Successfully deleted S3 directory for project ${projectId}`,
+        );
+      } catch (error) {
+        console.error(`Error deleting S3 project directory: ${error}`);
+      }
     }
   }
 

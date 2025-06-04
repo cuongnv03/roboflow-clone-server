@@ -27,7 +27,9 @@ const imageRepository = new ImageRepository();
 const annotationRepository = new AnnotationRepository();
 const classRepository = new ClassRepository();
 const userRepository = new UserRepository();
-const storageProvider = StorageFactory.createProvider("local");
+const storageProvider = StorageFactory.createProvider(
+  (process.env.STORAGE_TYPE as any) || "local",
+);
 
 // Initialize services
 const authService = new AuthService(userRepository);

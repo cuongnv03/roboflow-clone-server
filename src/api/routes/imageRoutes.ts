@@ -19,7 +19,9 @@ const userRepository = new UserRepository();
 
 // Initialize services
 const authService = new AuthService(userRepository);
-const storageProvider = StorageFactory.createProvider("local");
+const storageProvider = StorageFactory.createProvider(
+  (process.env.STORAGE_TYPE as any) || "local",
+);
 const imageService = new ImageService(
   imageRepository,
   projectRepository,

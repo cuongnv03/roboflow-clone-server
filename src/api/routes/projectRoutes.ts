@@ -18,6 +18,7 @@ import { UserRepository } from "../../domain/repositories/impl/UserRepository";
 import { AuthService } from "../../domain/services/impl/AuthService";
 import { StorageFactory } from "../../infrastructure/storage/StorageFactory";
 import { ImageRepository } from "../../domain/repositories/impl/ImageRepository";
+import { S3StorageProvider } from "../../infrastructure/storage/providers/S3StorageProvider";
 import { LocalStorageProvider } from "../../infrastructure/storage/providers/LocalStorageProvider";
 
 const router = Router();
@@ -25,7 +26,9 @@ const router = Router();
 // Initialize repositories
 const projectRepository = new ProjectRepository();
 const imageRepository = new ImageRepository();
-const storageProvider = StorageFactory.createProvider("local");
+const storageProvider = StorageFactory.createProvider(
+  (process.env.STORAGE_TYPE as any) || "local",
+);
 const classRepository = new ClassRepository();
 const userRepository = new UserRepository();
 
@@ -34,7 +37,7 @@ const authService = new AuthService(userRepository);
 const projectService = new ProjectService(
   projectRepository,
   imageRepository,
-  storageProvider as LocalStorageProvider,
+  storageProvider as S3StorageProvider,
 );
 const classService = new ClassService(classRepository, projectRepository);
 
