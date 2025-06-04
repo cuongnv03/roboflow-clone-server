@@ -12,7 +12,8 @@
     "migrate": "sequelize-cli db:migrate",
     "migrate:undo": "sequelize-cli db:migrate:undo",
     "seed": "sequelize-cli db:seed:all",
-    "postinstall": "mkdir uploads"
+    "postinstall": "mkdir uploads",
+    "start:prod": "npm run build && npm start"
   },
   "keywords": [
     "express",
