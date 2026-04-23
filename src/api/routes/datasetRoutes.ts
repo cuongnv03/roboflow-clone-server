@@ -81,6 +81,8 @@ router.post(
   datasetController.assignImagesToSplit,
 );
 
+router.post("/:datasetId/generate", datasetController.generateDataset);
+
 router.get("/:datasetId/images", datasetController.getDatasetImages);
 
 router.post(

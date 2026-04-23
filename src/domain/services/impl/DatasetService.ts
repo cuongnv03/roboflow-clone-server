@@ -17,6 +17,15 @@ import { NotFoundError } from "../../../exceptions/NotFoundError";
 import { InvalidRequestError } from "../../../exceptions/InvalidRequestError";
 import { DatasetStatus } from "../../../database/models/Dataset";
 
+function fisherYatesShuffle<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 export class DatasetService implements IDatasetService {
   constructor(
     private datasetRepository: IDatasetRepository,
@@ -42,9 +51,9 @@ export class DatasetService implements IDatasetService {
 
     // Initialize with default split ratios if provided
     if (datasetData.splitRatio) {
-      // Implementation for auto-splitting will be added in the generateSplit method
-      // Schedule split generation asynchronously
-      this.generateInitialSplit(dataset.dataset_id, userId, datasetData);
+      this.generateInitialSplit(dataset.dataset_id, userId, datasetData).catch(
+        (error) => console.error("Failed to generate initial split:", error),
+      );
     }
 
     return this.mapToDatasetResponseDTO(dataset, {
@@ -127,10 +136,15 @@ export class DatasetService implements IDatasetService {
           );
         }
 
-        // Get all annotated images from the project
-        const projectImages = await this.imageRepository.findByProjectId(
-          dataset.project_id,
-        );
+        // Get only annotated images from the project
+        const allImages = await this.imageRepository.findByProjectId(dataset.project_id);
+        const projectImages = allImages.filter((img) => img.status === "annotated");
+
+        if (projectImages.length === 0) {
+          throw new InvalidRequestError(
+            "No annotated images found. Annotate images before generating a split.",
+          );
+        }
 
         // Validate the ratio
         const { train, valid, test } = splitConfig.ratio;
@@ -139,7 +153,7 @@ export class DatasetService implements IDatasetService {
         }
 
         // Shuffle the images
-        const shuffled = [...projectImages].sort(() => 0.5 - Math.random());
+        const shuffled = fisherYatesShuffle(projectImages);
 
         // Calculate split indices
         const trainCount = Math.floor(shuffled.length * train);
@@ -366,7 +380,7 @@ export class DatasetService implements IDatasetService {
         }
 
         // Shuffle the images
-        const shuffled = [...projectImages].sort(() => 0.5 - Math.random());
+        const shuffled = fisherYatesShuffle(projectImages);
 
         // Calculate split indices
         const trainCount = Math.floor(shuffled.length * train);

@@ -154,6 +154,20 @@ export class DatasetController {
     });
   });
 
+  generateDataset = asyncHandler(async (req: Request, res: Response) => {
+    const datasetId = parseInt(req.params.datasetId);
+    const dataset = await this.datasetService.generateDataset(
+      datasetId,
+      req.user.id,
+    );
+
+    res.status(200).json({
+      status: "success",
+      message: "Dataset generated successfully",
+      data: dataset,
+    });
+  });
+
   generateExportPreview = asyncHandler(async (req: Request, res: Response) => {
     const datasetId = parseInt(req.params.datasetId);
     const format = req.query.format as string;

@@ -26,6 +26,7 @@ import {
 import fs from "fs";
 import path from "path";
 import archiver from "archiver";
+import sharp from "sharp";
 import xml2js from "xml2js";
 import { v4 as uuidv4 } from "uuid";
 import { ProjectType } from "../../../database/models/Project";
@@ -85,18 +86,27 @@ export class ExportService implements IExportService {
     );
 
     // Get annotations for all images
-    const annotationsByImage = {};
+    const annotationsByImage: AnnotationMap = {};
     for (const imageId of imageIds) {
-      const imageAnnotations = await this.annotationRepository.findByImageId(
-        imageId,
-      );
-      const annotationsByImage: AnnotationMap = {};
+      annotationsByImage[imageId] = await this.annotationRepository.findByImageId(imageId);
     }
 
     // Create a temporary directory for the export
     const exportId = uuidv4();
     const exportDir = path.join(process.cwd(), "temp", "exports", exportId);
     fs.mkdirSync(exportDir, { recursive: true });
+
+    // Preprocessing settings from the dataset
+    const preprocessing = (dataset.preprocessing_settings as any) || {};
+    const needsProcessing =
+      options.includeImages &&
+      (preprocessing.enableResize || preprocessing.grayscale);
+
+    // Map imageId → actual exported dimensions (may differ from originals after resize)
+    const processedDims = new Map<number, { width: number; height: number }>();
+    for (const img of images) {
+      processedDims.set(img.image_id, { width: img.width, height: img.height });
+    }
 
     // Determine which export format to use
     let formatDir: string;
@@ -115,48 +125,47 @@ export class ExportService implements IExportService {
           };
 
           // Map images to COCO format
-          const imageMap = {};
-          images.forEach((img, index) => {
-            // Get dataset split for this image
+          for (const img of images) {
             const assignment = imageAssignments.find(
               (a) => a.id === img.image_id,
             );
             const split = assignment ? assignment.split : "train";
 
-            // Map to COCO image format
-            const cocoImage = {
+            let finalWidth = img.width;
+            let finalHeight = img.height;
+
+            if (options.includeImages) {
+              const imagesDir = path.join(formatDir, "images", split);
+              fs.mkdirSync(imagesDir, { recursive: true });
+              const srcPath = path.join(process.cwd(), img.file_path);
+              if (fs.existsSync(srcPath)) {
+                const destPath = path.join(imagesDir, img.original_filename);
+                if (needsProcessing) {
+                  const dims = await this.processImageToFile(
+                    srcPath, destPath, preprocessing, img.width, img.height,
+                  );
+                  finalWidth = dims.width;
+                  finalHeight = dims.height;
+                } else {
+                  fs.copyFileSync(srcPath, destPath);
+                }
+              }
+            }
+
+            processedDims.set(img.image_id, { width: finalWidth, height: finalHeight });
+
+            cocoData.images.push({
               id: img.image_id,
-              width: img.width,
-              height: img.height,
+              width: finalWidth,
+              height: finalHeight,
               file_name: img.original_filename,
               license: 1,
               flickr_url: "",
               coco_url: "",
               date_captured: img.upload_date.toISOString().split("T")[0],
-              split, // Custom field for split information
-            };
-
-            cocoData.images.push(cocoImage);
-            interface ImageMap {
-              [key: number]: number;
-            }
-            const imageMap: ImageMap = {};
-
-            // Copy image to appropriate directory if requested
-            if (options.includeImages) {
-              const imagesDir = path.join(formatDir, "images", split);
-              fs.mkdirSync(imagesDir, { recursive: true });
-
-              // Copy image from storage to export directory
-              if (fs.existsSync(path.join(process.cwd(), img.file_path))) {
-                const destPath = path.join(imagesDir, img.original_filename);
-                fs.copyFileSync(
-                  path.join(process.cwd(), img.file_path),
-                  destPath,
-                );
-              }
-            }
-          });
+              split,
+            });
+          }
 
           // Map classes to COCO categories
           classes.forEach((cls) => {
@@ -172,27 +181,52 @@ export class ExportService implements IExportService {
           for (const imageId of imageIds) {
             const imageAnns = annotationsByImage[imageId] || [];
             const img = images.find((i) => i.image_id === imageId);
-
             if (!img) continue;
 
+            const dims = processedDims.get(imageId) ?? { width: img.width, height: img.height };
+            const scaleX = dims.width / img.width;
+            const scaleY = dims.height / img.height;
+
             for (const ann of imageAnns) {
-              // Only process bbox annotations for now
-              if (ann.annotation_data.type !== "bbox") continue;
+              const type = ann.annotation_data.type;
 
-              const bbox = ann.annotation_data.coordinates;
-              const area = bbox.width * bbox.height;
-
-              const cocoAnn = {
-                id: annotationId++,
-                image_id: imageId,
-                category_id: ann.class_id,
-                bbox: [bbox.x, bbox.y, bbox.width, bbox.height],
-                area: area,
-                segmentation: [],
-                iscrowd: 0,
-              };
-
-              cocoData.annotations.push(cocoAnn);
+              if (type === "bbox") {
+                const b = ann.annotation_data.coordinates;
+                const x = b.x * scaleX;
+                const y = b.y * scaleY;
+                const w = b.width * scaleX;
+                const h = b.height * scaleY;
+                cocoData.annotations.push({
+                  id: annotationId++,
+                  image_id: imageId,
+                  category_id: ann.class_id,
+                  bbox: [x, y, w, h],
+                  area: w * h,
+                  segmentation: [],
+                  iscrowd: 0,
+                });
+              } else if (type === "polygon") {
+                const points: Array<{ x: number; y: number }> =
+                  ann.annotation_data.coordinates;
+                if (points.length < 3) continue;
+                const flat = points.reduce<number[]>((acc, p) => { acc.push(p.x * scaleX, p.y * scaleY); return acc; }, []);
+                // Compute bounding box of polygon for bbox field
+                const xs = points.map((p) => p.x * scaleX);
+                const ys = points.map((p) => p.y * scaleY);
+                const minX = Math.min(...xs);
+                const minY = Math.min(...ys);
+                const bboxW = Math.max(...xs) - minX;
+                const bboxH = Math.max(...ys) - minY;
+                cocoData.annotations.push({
+                  id: annotationId++,
+                  image_id: imageId,
+                  category_id: ann.class_id,
+                  bbox: [minX, minY, bboxW, bboxH],
+                  area: bboxW * bboxH,
+                  segmentation: [flat],
+                  iscrowd: 0,
+                });
+              }
             }
           }
 
@@ -345,17 +379,19 @@ names: ${JSON.stringify(sortedClasses.map((c) => c.name))}
 
             // Copy image if requested
             if (options.includeImages) {
-              if (fs.existsSync(path.join(process.cwd(), img.file_path))) {
+              const srcPath = path.join(process.cwd(), img.file_path);
+              if (fs.existsSync(srcPath)) {
                 const destPath = path.join(
                   formatDir,
                   "images",
                   assignment.split,
                   path.basename(img.file_path),
                 );
-                fs.copyFileSync(
-                  path.join(process.cwd(), img.file_path),
-                  destPath,
-                );
+                if (needsProcessing) {
+                  await this.processImageToFile(srcPath, destPath, preprocessing, img.width, img.height);
+                } else {
+                  fs.copyFileSync(srcPath, destPath);
+                }
               }
             }
           }
@@ -378,98 +414,77 @@ names: ${JSON.stringify(sortedClasses.map((c) => c.name))}
 
           // Process each image
           for (const img of images) {
-            // Get dataset split for this image
             const assignment = imageAssignments.find(
               (a) => a.id === img.image_id,
             );
             if (!assignment) continue;
 
-            // Get annotations for this image
             const imageAnns = annotationsByImage[img.image_id] || [];
-
-            // Create a base filename without extension
             const baseFileName = path.basename(
               img.original_filename,
               path.extname(img.original_filename),
             );
 
-            // Generate VOC XML annotation
+            // Copy image and determine final dimensions
+            let finalWidth = img.width;
+            let finalHeight = img.height;
+            const srcPath = path.join(process.cwd(), img.file_path);
+            if (options.includeImages && fs.existsSync(srcPath)) {
+              const destPath = path.join(imagesDir, path.basename(img.file_path));
+              if (needsProcessing) {
+                const dims = await this.processImageToFile(srcPath, destPath, preprocessing, img.width, img.height);
+                finalWidth = dims.width;
+                finalHeight = dims.height;
+              } else {
+                fs.copyFileSync(srcPath, destPath);
+              }
+            }
+
+            const scaleX = finalWidth / img.width;
+            const scaleY = finalHeight / img.height;
+
             const objects = [];
-
             for (const ann of imageAnns) {
-              // Only process bbox annotations
               if (ann.annotation_data.type !== "bbox") continue;
-
-              // Get class name
               const className =
-                classes.find((c) => c.class_id === ann.class_id)?.name ||
-                "unknown";
-
-              // Extract coordinates
+                classes.find((c) => c.class_id === ann.class_id)?.name || "unknown";
               const { x, y, width, height } = ann.annotation_data.coordinates;
-
               objects.push({
                 name: className,
                 pose: "Unspecified",
                 truncated: 0,
                 difficult: 0,
                 bndbox: {
-                  xmin: Math.round(x),
-                  ymin: Math.round(y),
-                  xmax: Math.round(x + width),
-                  ymax: Math.round(y + height),
+                  xmin: Math.round(x * scaleX),
+                  ymin: Math.round(y * scaleY),
+                  xmax: Math.round((x + width) * scaleX),
+                  ymax: Math.round((y + height) * scaleY),
                 },
               });
             }
 
-            // Create XML content
             const xmlObject = {
               annotation: {
                 folder: "JPEGImages",
                 filename: img.original_filename,
                 path: path.join("JPEGImages", img.original_filename),
-                source: {
-                  database: "Roboflow Clone Export",
-                },
-                size: {
-                  width: img.width,
-                  height: img.height,
-                  depth: 3, // Assuming 3-channel RGB images
-                },
+                source: { database: "Roboflow Clone Export" },
+                size: { width: finalWidth, height: finalHeight, depth: 3 },
                 segmented: 0,
                 object: objects,
               },
             };
 
-            // Convert to XML
             const builder = new xml2js.Builder();
-            const xml = builder.buildObject(xmlObject);
-
-            // Write XML to file
             fs.writeFileSync(
               path.join(annotationsDir, `${baseFileName}.xml`),
-              xml,
+              builder.buildObject(xmlObject),
             );
 
-            // Add to image set file for the appropriate split
             fs.appendFileSync(
               path.join(imageSetDir, `${assignment.split}.txt`),
               baseFileName + "\n",
             );
-
-            // Copy image if requested
-            if (options.includeImages) {
-              if (fs.existsSync(path.join(process.cwd(), img.file_path))) {
-                const destPath = path.join(
-                  imagesDir,
-                  path.basename(img.file_path),
-                );
-                fs.copyFileSync(
-                  path.join(process.cwd(), img.file_path),
-                  destPath,
-                );
-              }
-            }
           }
           break;
 
@@ -481,94 +496,64 @@ names: ${JSON.stringify(sortedClasses.map((c) => c.name))}
           const createMLAnnotations = [];
 
           for (const img of images) {
-            // Get dataset split for this image
             const assignment = imageAssignments.find(
               (a) => a.id === img.image_id,
             );
             if (!assignment) continue;
 
-            // Get annotations for this image
             const imageAnns = annotationsByImage[img.image_id] || [];
 
-            // Create annotation entry based on project type
+            // Copy image and determine final dimensions
+            let finalWidth = img.width;
+            let finalHeight = img.height;
+            const srcPath = path.join(process.cwd(), img.file_path);
+            if (options.includeImages && fs.existsSync(srcPath)) {
+              const imagesDir = path.join(formatDir, "images");
+              fs.mkdirSync(imagesDir, { recursive: true });
+              const destPath = path.join(imagesDir, path.basename(img.file_path));
+              if (needsProcessing) {
+                const dims = await this.processImageToFile(srcPath, destPath, preprocessing, img.width, img.height);
+                finalWidth = dims.width;
+                finalHeight = dims.height;
+              } else {
+                fs.copyFileSync(srcPath, destPath);
+              }
+            }
+
+            const scaleX = finalWidth / img.width;
+            const scaleY = finalHeight / img.height;
+            const imagePath = options.includeImages
+              ? path.basename(img.file_path)
+              : img.file_path;
+
             if (
               project.type === "object_detection" ||
               project.type === "instance_segmentation"
             ) {
-              // Object detection format
               const annotations = [];
-
               for (const ann of imageAnns) {
-                // Only process bbox annotations
                 if (ann.annotation_data.type !== "bbox") continue;
-
-                // Get class name
                 const className =
-                  classes.find((c) => c.class_id === ann.class_id)?.name ||
-                  "unknown";
-
-                // Extract coordinates
+                  classes.find((c) => c.class_id === ann.class_id)?.name || "unknown";
                 const { x, y, width, height } = ann.annotation_data.coordinates;
-
-                // CreateML expects center coordinates
-                const centerX = x + width / 2;
-                const centerY = y + height / 2;
-
                 annotations.push({
                   label: className,
                   coordinates: {
-                    x: centerX,
-                    y: centerY,
-                    width,
-                    height,
+                    x: (x + width / 2) * scaleX,
+                    y: (y + height / 2) * scaleY,
+                    width: width * scaleX,
+                    height: height * scaleY,
                   },
                 });
               }
-
               if (annotations.length > 0) {
-                const imagePath = options.includeImages
-                  ? path.basename(img.file_path)
-                  : img.file_path;
-
-                createMLAnnotations.push({
-                  image: imagePath,
-                  annotations,
-                  split: assignment.split,
-                });
+                createMLAnnotations.push({ image: imagePath, annotations, split: assignment.split });
               }
             } else if (project.type === "classification") {
-              // Classification format
               if (imageAnns.length > 0) {
-                const firstAnn = imageAnns[0];
                 const className =
-                  classes.find((c) => c.class_id === firstAnn.class_id)?.name ||
-                  "unknown";
-
-                const imagePath = options.includeImages
-                  ? path.basename(img.file_path)
-                  : img.file_path;
-
-                createMLAnnotations.push({
-                  image: imagePath,
-                  label: className,
-                  split: assignment.split,
-                });
-              }
-            }
-
-            // Copy image if requested
-            if (options.includeImages) {
-              if (fs.existsSync(path.join(process.cwd(), img.file_path))) {
-                const imagesDir = path.join(formatDir, "images");
-                fs.mkdirSync(imagesDir, { recursive: true });
-                const destPath = path.join(
-                  imagesDir,
-                  path.basename(img.file_path),
-                );
-                fs.copyFileSync(
-                  path.join(process.cwd(), img.file_path),
-                  destPath,
-                );
+                  classes.find((c) => c.class_id === imageAnns[0].class_id)?.name || "unknown";
+                createMLAnnotations.push({ image: imagePath, label: className, split: assignment.split });
               }
             }
           }
@@ -686,21 +671,16 @@ names: ${JSON.stringify(sortedClasses.map((c) => c.name))}
 
             // Copy image if requested
             if (options.includeImages) {
-              if (fs.existsSync(path.join(process.cwd(), img.file_path))) {
-                const imagesDir = path.join(
-                  formatDir,
-                  assignment.split,
-                  "images",
-                );
+              const tfSrcPath = path.join(process.cwd(), img.file_path);
+              if (fs.existsSync(tfSrcPath)) {
+                const imagesDir = path.join(formatDir, assignment.split, "images");
                 fs.mkdirSync(imagesDir, { recursive: true });
-                const destPath = path.join(
-                  imagesDir,
-                  path.basename(img.file_path),
-                );
-                fs.copyFileSync(
-                  path.join(process.cwd(), img.file_path),
-                  destPath,
-                );
+                const destPath = path.join(imagesDir, path.basename(img.file_path));
+                if (needsProcessing) {
+                  await this.processImageToFile(tfSrcPath, destPath, preprocessing, img.width, img.height);
+                } else {
+                  fs.copyFileSync(tfSrcPath, destPath);
+                }
               }
             }
           }
@@ -831,19 +811,37 @@ names: ${JSON.stringify(sortedClasses.map((c) => c.name))}
           },
           annotations: annotations
             .map((ann, idx) => {
-              if (ann.annotation_data.type !== "bbox") return null;
-
-              const bbox = ann.annotation_data.coordinates;
-              const area = bbox.width * bbox.height;
-
-              return {
-                id: idx + 1,
-                image_id: image.image_id,
-                category_id: ann.class_id,
-                bbox: [bbox.x, bbox.y, bbox.width, bbox.height],
-                area: area,
-                iscrowd: 0,
-              };
+              const type = ann.annotation_data.type;
+              if (type === "bbox") {
+                const b = ann.annotation_data.coordinates;
+                return {
+                  id: idx + 1,
+                  image_id: image.image_id,
+                  category_id: ann.class_id,
+                  bbox: [b.x, b.y, b.width, b.height],
+                  area: b.width * b.height,
+                  segmentation: [],
+                  iscrowd: 0,
+                };
+              } else if (type === "polygon") {
+                const points: Array<{ x: number; y: number }> = ann.annotation_data.coordinates;
+                if (points.length < 3) return null;
+                const flat = points.reduce<number[]>((acc, p) => { acc.push(p.x, p.y); return acc; }, []);
+                const xs = points.map((p) => p.x);
+                const ys = points.map((p) => p.y);
+                const minX = Math.min(...xs), minY = Math.min(...ys);
+                const bboxW = Math.max(...xs) - minX, bboxH = Math.max(...ys) - minY;
+                return {
+                  id: idx + 1,
+                  image_id: image.image_id,
+                  category_id: ann.class_id,
+                  bbox: [minX, minY, bboxW, bboxH],
+                  area: bboxW * bboxH,
+                  segmentation: [flat],
+                  iscrowd: 0,
+                };
+              }
+              return null;
             })
             .filter(Boolean),
           categories: classes.map((cls) => ({
@@ -1047,6 +1045,38 @@ names: ${JSON.stringify(sortedClasses.map((c) => c.name))}
       // Finalize the archive
       archive.finalize();
     });
+  }
+
+  private async processImageToFile(
+    srcPath: string,
+    destPath: string,
+    preprocessing: any,
+    originalWidth: number,
+    originalHeight: number,
+  ): Promise<{ width: number; height: number }> {
+    let pipeline = sharp(srcPath);
+    let finalWidth = originalWidth;
+    let finalHeight = originalHeight;
+
+    if (preprocessing.grayscale) {
+      pipeline = pipeline.grayscale();
+    }
+    if (
+      preprocessing.enableResize &&
+      preprocessing.resize?.width &&
+      preprocessing.resize?.height
+    ) {
+      pipeline = pipeline.resize(
+        preprocessing.resize.width,
+        preprocessing.resize.height,
+        { fit: "fill" },
+      );
+      finalWidth = preprocessing.resize.width;
+      finalHeight = preprocessing.resize.height;
+    }
+
+    await pipeline.toFile(destPath);
+    return { width: finalWidth, height: finalHeight };
   }
 
   // Mapper helper methods
