@@ -6,14 +6,12 @@ This guide helps you set up and run both the frontend and backend of RoboFlow Cl
 
 Clone the repositories and arrange the folder structure like this:
 
-```
-
+```text
 project-root/
 │
 ├── roboflow-clone-client/      # Frontend (Vue.js)
 └── roboflow-clone-server/      # Backend (Node.js + Express)
-
-````
+```
 
 ## 🚀 Quick Start
 
@@ -129,19 +127,25 @@ Move both folders into the same parent directory (`project-root/`).
 
 ### 3. Create environment files
 
-* **Frontend**: In `roboflow-clone-client/`, create `.env.development` by copying from `.env.example`:
+* **Frontend**: In `roboflow-clone-client/`, create `.env.development`:
 
   ```bash
   cp roboflow-clone-client/.env.example roboflow-clone-client/.env.development
   ```
 
-* **Backend**: In the project root (alongside both folders), create `.env` by copying from the backend’s example:
+  Ensure it contains:
 
-  ```bash
-  cp roboflow-clone-server/.env.example .env
+  ```env
+  VITE_API_URL=http://localhost:5000/api/v1
   ```
 
-  Make sure to update any secrets (e.g., `JWT_SECRET`) as needed.
+* **Backend**: Create `.env` inside `roboflow-clone-server/` (used when running without Docker):
+
+  ```bash
+  cp roboflow-clone-server/.env.example roboflow-clone-server/.env
+  ```
+
+  Update `JWT_SECRET` and verify `STORAGE_TYPE=local`. When using Docker Compose the env vars are passed via the `environment:` section of `docker-compose.yml` directly.
 
 ### 4. Create `docker-compose.yml`
 
@@ -157,17 +161,21 @@ services:
     container_name: roboflow_db_dev
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_ROOT_PASSWORD: 1234
       MYSQL_DATABASE: roboflow_clone
-      MYSQL_USER: roboflow_user
-      MYSQL_PASSWORD: roboflow_user_password
     ports:
-      - '3306:3306'
+      - '3307:3306'
     volumes:
       - mysql_data:/var/lib/mysql
       - ./database/init:/docker-entrypoint-initdb.d
     networks:
       - roboflow-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-u", "root", "-p1234"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # Backend API
   backend:
@@ -181,8 +189,8 @@ services:
       PORT: 5000
       DB_HOST: database
       DB_PORT: 3306
-      DB_USER: roboflow_user
-      DB_PASSWORD: roboflow_user_password
+      DB_USER: root
+      DB_PASSWORD: 1234
       DB_NAME: roboflow_clone
       JWT_SECRET: your_jwt_secret_key
       JWT_EXPIRES_IN: 86400
@@ -196,7 +204,8 @@ services:
       - /app/node_modules
       - uploads_data:/app/uploads
     depends_on:
-      - database
+      database:
+        condition: service_healthy
     networks:
       - roboflow-network
 
@@ -228,7 +237,9 @@ networks:
     driver: bridge
 ```
 
-### 45. Start Docker containers
+> **Note:** MySQL is mapped to host port `3307` (not `3306`) to avoid conflicts with a locally installed MySQL instance. The `healthcheck` on the database service ensures the backend only starts after MySQL is fully ready.
+
+### 5. Start Docker containers
 
 Make sure Docker Desktop is running, then from the project root run:
 
@@ -238,7 +249,7 @@ docker-compose up --build
 
 This will:
 
-* Build and start a MySQL container (`roboflow_db_dev`) on port `3306`.
+* Build and start a MySQL container (`roboflow_db_dev`) on host port `3307`.
 * Build and start the backend (`roboflow_backend_dev`) on port `5000`.
 * Build and start the frontend (`roboflow_frontend_dev`) on port `5173`.
 
@@ -246,7 +257,7 @@ This will:
 
 * **Frontend**: [http://localhost:5173](http://localhost:5173)
 * **Backend API**: [http://localhost:5000/api/v1](http://localhost:5000/api/v1)
-* **MySQL**: Host = `localhost`, Port = `3306`, User = `roboflow_user`, Password = `roboflow_user_password`, Database = `roboflow_clone`
+* **MySQL**: Host = `localhost`, Port = `3307`, User = `root`, Password = `1234`, Database = `roboflow_clone`
 
 ## 🔧 Notes & Tips
 
