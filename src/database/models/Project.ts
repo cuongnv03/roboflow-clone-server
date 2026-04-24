@@ -6,8 +6,7 @@ export type ProjectType =
   | "object_detection"
   | "classification"
   | "instance_segmentation"
-  | "keypoint_detection"
-  | "multimodal";
+  | "keypoint_detection";
 
 export interface ProjectAttributes {
   project_id: number;
@@ -67,7 +66,6 @@ Project.init(
         "classification",
         "instance_segmentation",
         "keypoint_detection",
-        "multimodal",
       ),
       allowNull: false,
     },

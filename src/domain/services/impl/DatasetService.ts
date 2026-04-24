@@ -310,10 +310,13 @@ export class DatasetService implements IDatasetService {
     await this.datasetRepository.updateStatus(datasetId, "generating");
 
     try {
-      // Process dataset (preprocessing & augmentation)
-      // In a real implementation, this would be a background job
-      // For now, we'll just simulate it by waiting a short time
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Mark all images in this dataset as processed
+      const datasetImages = await this.datasetRepository.getDatasetImages(datasetId);
+      await Promise.all(
+        datasetImages.map((img) =>
+          this.imageRepository.updateStatus(img.id, "processed"),
+        ),
+      );
 
       // Update dataset status to completed
       await this.datasetRepository.updateStatus(datasetId, "completed");
